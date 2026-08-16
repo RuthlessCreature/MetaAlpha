@@ -1,0 +1,124 @@
+schema_version: 1
+project: MetaAlpha
+hypotheses:
+  - id: GANZHI_VOL_001
+    version: 1
+    branch: direct_ganzhi_solar_term_volatility
+    status: exploratory_registered_no_unseen_history
+    registered_at: 2026-08-16
+    title: Incremental future-volatility information from direct Ganzhi and solar-term cycle states
+
+    evidence_boundary: >-
+      All Shanghai Composite observations through 2026-08-14 are already exposed at project level.
+      Historical results are exploratory only. No natal-chart or metaphysical-causality claim is part of this hypothesis.
+
+    question: >-
+      After controlling for known volatility persistence, recent realized movement, Gregorian seasonality and secular time trend,
+      do deterministic Chinese-calendar/Ganzhi/solar-term states add stable information about the next five trading sessions' realized volatility?
+
+    calendar_convention:
+      engine: lunar_python 1.4.8
+      timezone: Asia/Shanghai
+      feature_anchor: 09:25
+      solar_term_phase: exact elapsed time between the frozen engine's previous and next solar-term timestamps
+      provider_switching: forbidden inside comparison
+
+    target:
+      raw: vol_fwd_5
+      primary: log_vol_fwd_5
+      definition: standard deviation of exactly the one-session close-to-close returns t+1 through t+5, then natural log
+      overlap_warning: adjacent targets share future returns and therefore require HAC plus non-overlap robustness
+
+    market:
+      symbol: '000001'
+      provider: sina
+      provider_method: ak.stock_zh_index_daily
+
+    registered_blocks:
+      - id: solar_term_24
+        kind: categorical
+        columns: [cycle__v1__prev_jieqi]
+      - id: solar_term_phase_quartile
+        kind: categorical
+        columns: [cycle__v1__jieqi_phase_quartile]
+      - id: solar_term_smooth
+        kind: continuous_joint
+        columns: [cycle__v1__term_phase_sin, cycle__v1__term_phase_cos]
+      - id: day_pillar_60
+        kind: categorical
+        columns: [cycle__v1__day_pillar]
+      - id: day_stem_10
+        kind: categorical
+        columns: [cycle__v1__day_stem]
+      - id: day_branch_12
+        kind: categorical
+        columns: [cycle__v1__day_branch]
+      - id: month_stem_10
+        kind: categorical
+        columns: [cycle__v1__month_stem]
+      - id: month_branch_12
+        kind: categorical
+        columns: [cycle__v1__month_branch]
+      - id: jie_or_qi
+        kind: categorical
+        columns: [cycle__v1__jie_or_qi]
+
+    frozen_baseline:
+      continuous:
+        - log_vol_back_5_lag1
+        - log_vol_back_20_lag1
+        - abs_ret_1_lag1
+        - normalized_time
+        - normalized_time_squared
+      fixed_effects:
+        - Gregorian weekday
+        - Gregorian month
+      timing_rule: all market baseline variables available no later than t-1 close; no t close/return enters the 09:25 feature baseline
+
+    inference:
+      model: OLS incremental block test
+      covariance: Newey-West HAC
+      hac_maxlags_full_daily: 20
+      block_test: joint Wald that all registered block coefficients equal zero
+      categorical_rare_level_rule: levels with fewer than 20 eligible observations in an era collapse to __RARE__
+      minimum_rows_full_era: 500
+      multiplicity: Benjamini-Hochberg across the 9 registered blocks separately within each era/test class
+      identifiability_qc:
+        - full design matrix must be full column rank
+        - HAC covariance submatrix for the tested block must be full rank
+        - invalid tests keep an audit row with p_value null and do not enter FDR
+
+    shifted_controls:
+      sessions: [17, 31, 47]
+      rule: shift the complete registered block by actual dataset sessions and fit the identical frozen baseline/model
+
+    descriptive_eras:
+      - history_all: 1990-12-19..2026-08-14
+      - era_1990_2004: 1990-12-19..2004-12-31
+      - era_2005_2014: 2005-01-01..2014-12-31
+      - era_2015_2020: 2015-01-01..2020-12-31
+      - era_2021_2026: 2021-01-01..2026-08-14
+      - purge the final 5 sessions of every bounded era before fitting the target
+
+    nonoverlap_robustness:
+      construction: split full-history eligible rows by original trading-session index modulo 5
+      reason: within a residue class, t+1..t+5 realized-volatility windows do not overlap
+      covariance: Newey-West HAC
+      hac_maxlags_subsample: 4
+      multiplicity: Benjamini-Hochberg across the 9 registered blocks within each residue class
+
+    exploratory_interest_gate:
+      require_full_history_family_fdr_lte: 0.05
+      require_same_block_family_fdr_lte_0_10_in_at_least_two_of_era_2005_2014_era_2015_2020_era_2021_2026: true
+      require_registered_raw_p_less_than_all_17_31_47_shift_raw_p_in_at_least_two_later_eras: true
+      require_full_history_nonoverlap_family_fdr_lte_0_10_in_at_least_three_of_five_residue_classes: true
+      meaning: nomination for a separately frozen future-only volatility experiment only
+
+    forbidden_actions:
+      - call historical results confirmatory
+      - add/remove cycle blocks after seeing results and retain version 1
+      - use same-day close or same-day realized return in the 09:25 baseline
+      - change log-volatility target to whichever transformation gives the best p-value
+      - change HAC lag, rare-level threshold or non-overlap rule after seeing results
+      - remove Gregorian month or past-volatility baselines because they absorb a cycle effect
+      - switch market-data provider because another source improves significance
