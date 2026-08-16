@@ -1,0 +1,50 @@
+schema_version: 1
+evaluation_id: SSE_ZIPING_V1_20260816
+evaluated_at: 2026-08-16
+workflow_run_id: 31938609974
+data:
+  symbol: '000001'
+  source: AKShare / Sina index history
+  source_method: ak.stock_zh_index_daily
+  source_version: 1.18.84
+  rows: 8704
+  first_date: 1990-12-19
+  last_date: 2026-08-14
+  canonical_sha256: 697af81a200060d42b04fa7a79b92fb8287e709ae10baf0825ae301fb4af5aa1
+holdout:
+  start: 2021-01-01
+  status: burned_for_v1
+  rule: No rule designed or modified after this evaluation may describe the same interval as unseen v1 evidence.
+decisions:
+  - hypothesis_id: ZIPING_001
+    decision: inconclusive
+    evidence:
+      development_min_family_fdr: 0.1323079492
+      validation_min_family_fdr: 0.4896212489
+      holdout_min_family_fdr: 0.0610402449
+      holdout_shift_null_min_family_fdr: 0.8596283912
+    note: Near-threshold holdout wealth-polarity observation is post-hoc only and not accepted.
+  - hypothesis_id: ZIPING_002
+    decision: rejected
+    evidence:
+      development_min_family_fdr: 0.0017633945
+      development_shift_null_min_family_fdr: 0.0012846984
+      validation_min_family_fdr: 0.2785399631
+      validation_shift_null_min_family_fdr: 0.0044850704
+      holdout_min_family_fdr: 0.2789960070
+    note: Apparent development effect loses to or is matched by shifted nulls and does not persist.
+  - hypothesis_id: ZIPING_003
+    decision: rejected
+    evidence:
+      development_min_family_fdr: 0.9003928568
+      validation_min_family_fdr: 0.4924376471
+      holdout_min_family_fdr: 0.2463907287
+    note: No partition survives family-wide multiple-testing correction.
+  - hypothesis_id: ZIPING_004
+    decision: rejected
+    evidence:
+      development_min_family_fdr: 0.2023967319
+      validation_min_family_fdr: 0.0675727826
+      holdout_min_family_fdr: 0.0922045159
+      holdout_shift_null_min_family_fdr: 0.0078852856
+    note: Registered risk-state effects fail null competition, especially in the sealed holdout.
