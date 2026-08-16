@@ -1,0 +1,78 @@
+schema_version: 1
+project: MetaAlpha
+hypotheses:
+  - id: ZIPING_V2_001
+    version: 1
+    branch: bazi_ziping_use_change
+    status: exploratory_registered_no_unseen_history
+    title: Ziping Zhenquan month-use change primitives and next-session return
+    question: >-
+      Do source-constrained month-command transmission and branch-harmony use-change states
+      contain stable next-session return information beyond ordinary calendar timing?
+    registered_at: 2026-08-16
+    historical_last_date: 2026-08-14
+    evidence_status: >-
+      All history through 2026-08-14 is already exposed at project level. Historical results
+      from this v2 family are exploratory only and may nominate future rules but cannot confirm them.
+
+    classical_basis:
+      method: Ziping Zhenquan month-command use-change operationalization
+      principles:
+        - month-command hidden stems may change the visible use when primary qi does not transmit but another hidden stem does
+        - when primary qi and secondary qi both transmit, primary qi is retained as the main visible use and the additional transmitted component is recorded rather than silently replacing it
+        - complete three-harmony structures involving the month branch are recorded as an elemental use-family transformation without inventing yin-yang polarity
+        - mixed-storage months are resolved mechanically through transmitted stems and complete harmony states
+      aggregate_fortune_score_defined: false
+
+    feature_set:
+      - zpzt_use__v2__selected_ten_god
+      - zpzt_use__v2__selected_pattern_candidate
+      - zpzt_use__v2__selection_mode
+      - zpzt_use__v2__use_change_detected
+      - zpzt_use__v2__composition_mode
+      - zpzt_use__v2__mixed_families
+      - zpzt_use__v2__harmony_family
+      - zpzt_use__v2__transmitted_count
+
+    target: ret_fwd_1
+    direction: exploratory
+    post_hoc: false
+    calendar_convention: lunar_python 1.4.8; Asia/Shanghai; session anchor 09:25
+    market:
+      symbol: '000001'
+      provider: sina
+      provider_method: ak.stock_zh_index_daily
+      provider_switching: forbidden inside comparison
+
+    inference:
+      method: one-vs-rest OLS HAC/Newey-West
+      hac_maxlags: 5
+      multiplicity: Benjamini-Hochberg across the complete registered family
+      minimum_observations_per_level: 100
+
+    descriptive_eras:
+      - history_all: 1990-12-19..2026-08-14
+      - era_1990_2004: 1990-12-19..2004-12-31
+      - era_2005_2014: 2005-01-01..2014-12-31
+      - era_2015_2020: 2015-01-01..2020-12-31
+      - era_2021_2026: 2021-01-01..2026-08-14
+
+    controls:
+      - every registered feature shifted by 17 actual dataset sessions
+      - every registered feature shifted by 31 actual dataset sessions
+      - every registered feature shifted by 47 actual dataset sessions
+      - Gregorian weekday descriptive baseline
+      - Gregorian month descriptive baseline
+
+    exploratory_interest_gate:
+      family_fdr_lte: 0.05
+      require_directional_stability_across_at_least_two_later_eras: true
+      require_registered_family_not_materially_weaker_than_shift_controls: true
+      meaning: nomination for a separately frozen future-only hypothesis only
+
+    forbidden_actions:
+      - call any historical result confirmatory
+      - change hidden-stem ordering after seeing results under version 1
+      - introduce a numeric strong-weak or fortune score into this hypothesis family
+      - choose only the historically best feature level and relabel it preregistered
+      - switch market-data provider because another source improves significance
