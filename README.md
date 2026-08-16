@@ -17,18 +17,34 @@ A candidate survives only if it remains useful after:
 - transaction-cost assumptions where applicable;
 - sealed holdout evaluation.
 
-## v0.1 scope
+## Current scope — v0.2
 
-Phase 1 deliberately starts with the most deterministic and historically reconstructable branches:
+The first Bazi implementation is explicitly based on a **Ziping Zhenquan (《子平真诠》) month-command-first operationalization**.
+
+Implemented branches:
 
 1. Gregorian calendar controls;
-2. Ganzhi features;
-3. Wuxing mappings;
-4. 24 solar terms;
-5. Bazi-compatible feature interfaces;
-6. randomized and date-shift controls.
+2. solar-term-aware Ganzhi pillars;
+3. stem/branch element and polarity mappings;
+4. Ziping ten-god mapping;
+5. month-command hidden stems and transmitted-stem features;
+6. Ziping pattern candidates: 官、财、印、食神、七杀、伤官、阳刃、建禄月劫;
+7. 顺用/逆用 structural route flags;
+8. month-command 冲、害、破、刑 flags;
+9. deterministic randomized controls;
+10. forward return/risk labels and statistical screening.
 
-Qimen, Meihua, Yijing and true-random Liuyao are later branches. True-random Liuyao is **forward-test only**.
+Qimen, Meihua, Yijing and true-random Liuyao remain later branches. True-random Liuyao is **forward-test only**.
+
+## Why Ziping is not a five-element score
+
+MetaAlpha v0.2 deliberately does not start by assigning arbitrary weights to “木火土金水强弱”. The Ziping branch first records:
+
+```text
+月令 -> 十神 -> 格局候选 -> 顺/逆 -> 四柱配合 -> 成败/制化 primitive flags
+```
+
+Strength and pattern-quality models such as 有情/无情、有力/无力 are deferred until their numerical rules can be independently versioned and tested. This prevents a large discretionary weight surface from becoming a backtest-overfitting machine.
 
 ## Research questions
 
@@ -38,7 +54,7 @@ Does a traditional temporal feature change the conditional distribution of futur
 
 ### H2 — relational information
 
-Do relationship rules such as stem/branch interactions add information beyond raw calendar labels?
+Do relationship rules such as month-command structure, stem transmission and branch interactions add information beyond raw calendar labels?
 
 ### H3 — incremental alpha
 
@@ -72,32 +88,72 @@ Historical backtest beauty is not an acceptance criterion.
 MetaAlpha/
 ├── docs/
 │   ├── RFC-0001-metaalpha-v0.1.md
+│   ├── RFC-0002-ziping-zhenquan-bazi.md
 │   ├── HYPOTHESIS_REGISTRY.md
 │   └── VALIDATION_STANDARD.md
 ├── registry/
 │   └── hypotheses.yaml
 ├── src/metaalpha/
-│   ├── __init__.py
+│   ├── bazi_ziping.py
 │   ├── calendar_features.py
 │   ├── controls.py
+│   ├── ganzhi.py
 │   ├── labels.py
 │   ├── pipeline.py
 │   └── validation.py
 ├── tests/
 │   ├── test_controls.py
+│   ├── test_ganzhi_ziping.py
 │   └── test_labels.py
 ├── pyproject.toml
 └── README.md
 ```
 
-## Non-goals of v0.1
+## Calendar convention
+
+The v0.2 A-share session convention is frozen as:
+
+```text
+timezone: Asia/Shanghai
+session feature anchor: 09:25:00
+calendar engine: lunar_python 1.4.8
+```
+
+Alternative anchors or calendrical conventions must be registered as new hypotheses rather than silently optimized.
+
+## Running the pipeline
+
+Baseline only:
+
+```bash
+metaalpha input.csv --out reports/baseline
+```
+
+Enable Ganzhi + Ziping Zhenquan features:
+
+```bash
+metaalpha input.csv --ziping --out reports/ziping_v1
+```
+
+Expected minimum input:
+
+```text
+date,close
+2024-01-02,2962.28
+...
+```
+
+For cross-sectional work, add `symbol` and preferably full OHLCV/amount/turnover data.
+
+## Non-goals
 
 - no claim of supernatural causality;
-- no live trading recommendation engine;
+- no live trading recommendation engine at this stage;
 - no discretionary post-hoc interpretation;
 - no LLM-generated daily metaphysical narrative as a feature source;
-- no model selection based only on highest historical return.
+- no model selection based only on highest historical return;
+- no hidden rule changes after seeing market results.
 
 ## Status
 
-`v0.1.0-alpha` — research specification and deterministic baseline pipeline.
+`v0.2.0-alpha` — deterministic Ganzhi + Ziping Zhenquan primitive feature engine, registered hypotheses, tests and CI.
