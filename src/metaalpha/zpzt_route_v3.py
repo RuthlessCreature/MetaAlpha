@@ -39,13 +39,7 @@ def _visible_context(year: str, month: str, day: str, time: str) -> dict[str, ob
     visible: list[dict[str, object]] = []
     for position, idx in VISIBLE_POSITIONS:
         stem = stems[idx]
-        visible.append(
-            {
-                "position": position,
-                "stem": stem,
-                "ten_god": ten_god(dm, stem),
-            }
-        )
+        visible.append({"position": position, "stem": stem, "ten_god": ten_god(dm, stem)})
 
     all_hidden = {hs for branch in branches for hs in HIDDEN_STEMS[branch]}
     return {
@@ -63,19 +57,11 @@ def _has(context: dict[str, object], labels: set[str] | frozenset[str]) -> bool:
 
 
 def _stems_for(context: dict[str, object], labels: set[str] | frozenset[str]) -> list[str]:
-    return [
-        str(x["stem"])
-        for x in context["visible"]
-        if str(x["ten_god"]) in labels
-    ]
+    return [str(x["stem"]) for x in context["visible"] if str(x["ten_god"]) in labels]
 
 
 def _ten_gods_for(context: dict[str, object], labels: set[str] | frozenset[str]) -> list[str]:
-    return [
-        str(x["ten_god"])
-        for x in context["visible"]
-        if str(x["ten_god"]) in labels
-    ]
+    return [str(x["ten_god"]) for x in context["visible"] if str(x["ten_god"]) in labels]
 
 
 def _has_combination_between(
@@ -132,9 +118,10 @@ def _route(
 def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict[str, object]:
     """Build a non-numeric 相神 / 成格 / 救应 route graph.
 
-    The graph encodes explicit route predicates from 《子平真诠》. It does not
-    assign scores, does not resolve classical terms such as 身强/印轻/伤旺 with
-    arbitrary weights, and marks those routes as unresolved conditions instead.
+    Complete month-involving three-harmony states are treated as a use-family
+    transformation first. Because a transformed branch family has no single
+    yin/yang stem polarity, downstream exact 正/偏 routes are deliberately left
+    unresolved instead of applying the pre-transformation pattern rules.
     """
     use = month_use_features_from_pillars(year, month, day, time)
     c = _visible_context(year, month, day, time)
@@ -142,10 +129,10 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
     selected_tg = str(use["zpzt_use__v2__selected_ten_god"])
     base_pattern = str(use["zpzt_use__v2__selected_pattern_candidate"])
     harmony_family = str(use["zpzt_use__v2__harmony_family"])
-    harmony_changes = bool(use["zpzt_use__v2__harmony_changes_family"])
+    harmony_present = bool(harmony_family)
     selected_family = TEN_GOD_FAMILY[selected_tg]
-    effective_family = harmony_family if harmony_changes and harmony_family else selected_family
-    effective_scope = "family_only_from_harmony" if harmony_changes and harmony_family else "exact_ten_god"
+    effective_family = harmony_family if harmony_present else selected_family
+    effective_scope = "family_only_from_harmony" if harmony_present else "exact_ten_god"
 
     has_wealth = _has(c, set(WEALTH))
     has_resource = _has(c, set(RESOURCE))
@@ -161,15 +148,48 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
     harmony_output = harmony_family == "output"
     harmony_wealth = harmony_family == "wealth"
     harmony_resource = harmony_family == "resource"
-    harmony_official = harmony_family == "official_killings"
-    route_has_output = has_output or harmony_output
-    route_has_wealth = has_wealth or harmony_wealth
-    route_has_resource = has_resource or harmony_resource
-    route_has_official_killing = has_official or has_killing or harmony_official
 
     routes: list[Route] = []
 
-    if base_pattern == "官格":
+    if harmony_present:
+        # A complete month-involving 三合 first changes the use family. We do
+        # not pretend that an element-only branch transformation tells us the
+        # exact 正/偏 ten-god polarity required by the ordinary route table.
+        routes.append(
+            _route(
+                "harmony_transforms_month_use_family",
+                True,
+                assistants=(f"branch_harmony:{harmony_family}",),
+                reasons=("完整三合会局先改变月令用神家族；变化后正偏极性不武断指定",),
+            )
+        )
+        routes.extend(
+            [
+                _route(
+                    "official_harmony_transforms_to_resource",
+                    base_pattern == "官格" and harmony_resource,
+                    assistants=("branch_harmony:resource",),
+                    reasons=("官用经会局化印/资源家族的机械候选",),
+                    source_example=True,
+                ),
+                _route(
+                    "hurting_harmony_transforms_to_wealth",
+                    base_pattern == "伤官格" and harmony_wealth,
+                    assistants=("branch_harmony:wealth",),
+                    reasons=("伤官经会局化财/财富家族的机械候选",),
+                    source_example=True,
+                ),
+                _route(
+                    "peer_harmony_output_generates_wealth",
+                    base_pattern == "建禄月劫" and harmony_output and has_wealth,
+                    assistants=tuple(_ten_gods_for(c, set(WEALTH))) + ("branch_harmony:output",),
+                    reasons=("月劫遇财，支会输出之气以转劫生财的机械候选",),
+                    source_example=True,
+                ),
+            ]
+        )
+
+    elif base_pattern == "官格":
         routes.extend(
             [
                 _route(
@@ -186,9 +206,7 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
                 ),
                 _route(
                     "official_resource_combines_hurting_rescue",
-                    has_hurting
-                    and has_resource
-                    and _has_combination_between(c, set(RESOURCE), {"伤官"}),
+                    has_hurting and has_resource and _has_combination_between(c, set(RESOURCE), {"伤官"}),
                     assistants=tuple(_ten_gods_for(c, set(RESOURCE))),
                     reasons=("官见伤而印与伤合：合伤存官的机械候选",),
                     source_example=True,
@@ -221,9 +239,7 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
                 ),
                 _route(
                     "wealth_robwealth_combines_killing_rescue",
-                    has_killing
-                    and has_robwealth
-                    and _has_combination_between(c, {"劫财"}, {"七杀"}),
+                    has_killing and has_robwealth and _has_combination_between(c, {"劫财"}, {"七杀"}),
                     assistants=("劫财",),
                     reasons=("财用遇杀而劫与杀合：合杀存财的机械候选",),
                     source_example=True,
@@ -344,7 +360,7 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
         routes.append(
             _route(
                 "blade_official_killing_controls_use",
-                route_has_official_killing and (route_has_wealth or route_has_resource) and not has_hurting,
+                (has_official or has_killing) and (has_wealth or has_resource) and not has_hurting,
                 assistants=tuple(_ten_gods_for(c, {"正官", "七杀", "正财", "偏财", "正印", "偏印"})),
                 reasons=("阳刃透官杀而露财印、不见伤官",),
             )
@@ -355,13 +371,13 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
             [
                 _route(
                     "peer_official_with_wealth_or_resource",
-                    has_official and (route_has_wealth or route_has_resource),
+                    has_official and (has_wealth or has_resource),
                     assistants=tuple(_ten_gods_for(c, {"正官", "正财", "偏财", "正印", "偏印"})),
                     reasons=("建禄月劫透官而逢财印",),
                 ),
                 _route(
                     "peer_wealth_with_output",
-                    route_has_wealth and route_has_output,
+                    has_wealth and has_output,
                     assistants=tuple(_ten_gods_for(c, {"正财", "偏财", "食神", "伤官"})),
                     reasons=("建禄月劫透财而逢食伤",),
                 ),
@@ -371,13 +387,6 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
                     assistants=("七杀", "食神"),
                     reasons=("建禄月劫透杀而遇制伏",),
                 ),
-                _route(
-                    "peer_harmony_output_generates_wealth",
-                    harmony_output and has_wealth,
-                    assistants=tuple(_ten_gods_for(c, set(WEALTH))) + ("branch_harmony:output",),
-                    reasons=("月劫遇财，支会输出之气以转劫生财的机械候选",),
-                    source_example=True,
-                ),
             ]
         )
 
@@ -385,10 +394,9 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
     unresolved = [r for r in routes if r.status.startswith("unresolved_")]
     absent = [r for r in routes if r.status == "absent"]
     source_hits = [r for r in hit if r.source_example]
+    source_present = [r for r in hit + unresolved if r.source_example]
 
-    assistant_labels = tuple(
-        dict.fromkeys(label for route in hit + unresolved for label in route.assistants)
-    )
+    assistant_labels = tuple(dict.fromkeys(label for route in hit + unresolved for label in route.assistants))
     combination_pairs = 0
     visible = c["visible"]
     for i, left in enumerate(visible):
@@ -396,13 +404,7 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
             if frozenset((str(left["stem"]), str(right["stem"]))) in STEM_COMBINATIONS:
                 combination_pairs += 1
 
-    route_state = (
-        "route_hit"
-        if hit
-        else "route_unresolved"
-        if unresolved
-        else "no_registered_route_hit"
-    )
+    route_state = "route_hit" if hit else "route_unresolved" if unresolved else "no_registered_route_hit"
 
     return {
         "zpzt_route__v3__base_pattern": base_pattern,
@@ -411,6 +413,8 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
         "zpzt_route__v3__effective_use_family": effective_family,
         "zpzt_route__v3__effective_use_scope": effective_scope,
         "zpzt_route__v3__harmony_family": harmony_family,
+        "zpzt_route__v3__harmony_transition_only": int(harmony_present),
+        "zpzt_route__v3__downstream_polarity_unresolved": int(harmony_present),
         "zpzt_route__v3__route_state": route_state,
         "zpzt_route__v3__route_hit_count": len(hit),
         "zpzt_route__v3__route_unresolved_count": len(unresolved),
@@ -421,6 +425,8 @@ def route_graph_from_pillars(year: str, month: str, day: str, time: str) -> dict
         "zpzt_route__v3__assistants": "|".join(assistant_labels),
         "zpzt_route__v3__source_example_rescue_hit_count": len(source_hits),
         "zpzt_route__v3__source_example_rescue_hits": "|".join(r.name for r in source_hits),
+        "zpzt_route__v3__source_example_route_present_count": len(source_present),
+        "zpzt_route__v3__source_example_routes_present": "|".join(r.name for r in source_present),
         "zpzt_route__v3__requires_strength_route_count": sum(r.requires_strength for r in routes if r.status != "absent"),
         "zpzt_route__v3__requires_position_route_count": sum(r.requires_position for r in routes if r.status != "absent"),
         "zpzt_route__v3__requires_quantity_route_count": sum(r.requires_quantity for r in routes if r.status != "absent"),
