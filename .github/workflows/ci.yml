@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -17,3 +19,8 @@ jobs:
         run: pip install -e '.[dev]'
       - name: Test
         run: pytest -q
+      - name: Audit META_FWD_001 immutable ledger
+        run: |
+          python -m metaalpha.forward_audit \
+            --predictions-dir forward/META_FWD_001/predictions \
+            --repo-root .
