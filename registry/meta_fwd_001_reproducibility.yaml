@@ -1,0 +1,76 @@
+schema_version: 1
+family_id: META_FWD_001
+registered_forward_start: '2026-08-17'
+registration_commit: 12ddbcc66b0f1b3679c3f87ab1598cd538fdaa47
+first_eligible_prediction:
+  target_date: '2026-08-17'
+  workflow_run_id: 31952157782
+  workflow_job_id: 95177188802
+  prediction_commit: 1d473d9471ad51bc122c517c4ce0826b02c581b3
+  generated_at: '2026-08-16T22:15:40.790505+08:00'
+  git_commit_at: '2026-08-16T14:16:45Z'
+  target_anchor: '2026-08-17T09:25:00+08:00'
+  training_last_market_date: '2026-08-14'
+  code_commit_recorded_in_prediction: 12ddbcc66b0f1b3679c3f87ab1598cd538fdaa47
+first_run_environment:
+  github_runner_os: Ubuntu 24.04.4 LTS
+  github_runner_image: ubuntu-24.04
+  github_runner_image_version: '20260810.271.1'
+  python: '3.11.15'
+  lockfile: requirements/meta-fwd-001.lock.txt
+  lockfile_sha256: f12b6780df99f96a7904d435c42344f5b809852dbff043d568306e7721ee2a8b
+  key_packages:
+    numpy: '2.4.6'
+    pandas: '3.0.5'
+    scipy: '1.17.1'
+    scikit-learn: '1.9.0'
+    statsmodels: '0.14.6'
+    lunar_python: '1.4.8'
+    akshare: '1.18.84'
+predictor_freeze:
+  reference_commit: 12ddbcc66b0f1b3679c3f87ab1598cd538fdaa47
+  policy: >-
+    Predictive dependency-closure source files that existed at registration are
+    byte-for-byte compared with the reference commit before every META_FWD signal.
+    Audit, reporting and settlement modules added later are outside this predictor
+    closure and may be repaired without altering the frozen prediction algorithm.
+  runtime_policy: >-
+    Prediction and settlement jobs use CPython 3.11.15 and the exact package
+    versions in the first-run lockfile. The lockfile itself is bound to the
+    registered SHA-256 above.
+prediction_ledger:
+  directory: forward/META_FWD_001/predictions
+  append_only: true
+  overwrite_allowed: false
+  git_exact_path_touch_required: 1
+  commit_must_precede_target_anchor: true
+  eligibility_recomputed_during_audit: true
+realized_outcome_ledger:
+  directory: forward/META_FWD_001/realized
+  append_only: true
+  overwrite_allowed: false
+  earliest_same_day_settlement: '15:30 Asia/Shanghai'
+  git_exact_path_touch_required: 1
+  prediction_sha256_binding: true
+  locked_fields:
+    - previous_market_date
+    - previous_close
+    - close
+    - realized_return
+    - realized_direction
+    - provider
+    - symbol
+    - market_manifest
+  source_revision_policy: >-
+    A later vendor revision must not rewrite an already locked realized outcome.
+    Any separate source-correction study requires a new dataset/version and cannot
+    silently change the first-500 confirmatory ledger.
+confirmatory_gate_input:
+  predictions: immutable eligible prediction records
+  outcomes: immutable realized outcome records
+  first_n_eligible_settled_sessions: 500
+  historical_market_refetch_used_for_old_labels: false
+security_scope_note: >-
+  Git history and hashes provide strong auditability against accidental drift and
+  ordinary post-hoc edits, but unsigned Git commits are not treated as an external
+  trusted timestamp authority or as protection against a malicious repository owner.
