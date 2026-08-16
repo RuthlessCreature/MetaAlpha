@@ -29,6 +29,8 @@ jobs:
           python -m metaalpha.forward_audit \
             --predictions-dir forward/META_FWD_001/predictions \
             --repo-root .
+          python -m metaalpha.forward_daily_refit_audit \
+            --predictions-dir forward/META_FWD_001/predictions
       - name: Audit META_FWD_001 immutable realized ledger
         run: |
           python -m metaalpha.forward_realized_audit \
