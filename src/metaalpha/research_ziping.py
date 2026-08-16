@@ -10,6 +10,7 @@ import pandas as pd
 
 from .controls import add_shifted_feature
 from .data_sources import DataManifest, fetch_akshare_index
+from .labels import purge_forward_boundary
 from .pipeline import build_dataset
 from .validation import evaluate_categorical_family, walk_forward_categorical_stability
 
@@ -73,24 +74,34 @@ EXPERIMENTS: tuple[ExperimentSpec, ...] = (
     ),
 )
 
-
 PARTITIONS = (
     ("development", None, "2014-12-31"),
     ("validation", "2015-01-01", "2020-12-31"),
-    ("sealed_holdout_v1", "2021-01-01", None),
+    ("burned_holdout_v1", "2021-01-01", None),
 )
 
 SHIFT_SESSIONS = (17, 31, 47)
+HAC_MAXLAGS = {
+    "ret_fwd_1": 5,
+    "vol_fwd_5": 20,
+}
 
 
-def _slice_dates(df: pd.DataFrame, start: str | None, end: str | None) -> pd.DataFrame:
+def _slice_dates(
+    df: pd.DataFrame,
+    start: str | None,
+    end: str | None,
+    *,
+    target: str,
+) -> pd.DataFrame:
     dates = pd.to_datetime(df["date"], errors="raise")
     mask = pd.Series(True, index=df.index)
     if start is not None:
         mask &= dates >= pd.Timestamp(start)
     if end is not None:
         mask &= dates <= pd.Timestamp(end)
-    return df.loc[mask].copy()
+    part = df.loc[mask].copy()
+    return purge_forward_boundary(part, target=target)
 
 
 def _add_shift_nulls(df: pd.DataFrame, features: Iterable[str]) -> tuple[pd.DataFrame, list[str]]:
@@ -110,12 +121,15 @@ def _screen_partition(
     partition_name: str,
     min_n: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    hac_maxlags = HAC_MAXLAGS[spec.target]
     real = evaluate_categorical_family(
         df,
         spec.features,
         spec.target,
         family_name=spec.family_name,
         min_n=min_n,
+        inference="hac",
+        hac_maxlags=hac_maxlags,
     )
     if not real.empty:
         real.insert(0, "hypothesis_id", spec.hypothesis_id)
@@ -129,6 +143,8 @@ def _screen_partition(
         spec.target,
         family_name=f"{spec.family_name}__shift_null",
         min_n=min_n,
+        inference="hac",
+        hac_maxlags=hac_maxlags,
     )
     if not null.empty:
         null.insert(0, "hypothesis_id", spec.hypothesis_id)
@@ -147,6 +163,9 @@ def _walk_forward_for_spec(df: pd.DataFrame, spec: ExperimentSpec) -> pd.DataFra
             min_train=1500,
             test_size=500,
             min_n=20,
+            inference="hac",
+            hac_maxlags=HAC_MAXLAGS[spec.target],
+            purge_forward_tail=True,
         )
         if r.empty:
             continue
@@ -161,16 +180,17 @@ def _diagnostic_summary(screen: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     group_cols = ["hypothesis_id", "partition", "test_kind"]
     for keys, g in screen.groupby(group_cols, dropna=False):
-        p_col = "p_fdr_bh_family"
         rows.append(
             {
                 "hypothesis_id": keys[0],
                 "partition": keys[1],
                 "test_kind": keys[2],
                 "tests": int(len(g)),
-                "min_family_fdr": float(g[p_col].min()),
+                "min_family_fdr": float(g["p_fdr_bh_family"].min()),
                 "max_abs_effect_std": float(g["effect_std"].abs().max()),
                 "median_abs_effect_std": float(g["effect_std"].abs().median()),
+                "inference": str(g["inference"].iloc[0]),
+                "hac_maxlags": int(g["hac_maxlags"].iloc[0]),
             }
         )
     return pd.DataFrame(rows).sort_values(group_cols).reset_index(drop=True)
@@ -183,6 +203,13 @@ def run_first_sse_experiment(
     manifest: DataManifest | None = None,
     min_n: int = 100,
 ) -> dict[str, pd.DataFrame]:
+    """Corrected v1 reanalysis.
+
+    The original 2026-08-16 risk analysis is invalid because its forward
+    volatility label was misaligned and IID inference was used on dependent
+    windows. This function uses corrected labels, partition-tail purging and
+    HAC covariance. The old holdout remains burned; this is not a new holdout.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     dataset = build_dataset(raw, include_ziping=True)
     dataset.to_csv(out_dir / "dataset.csv", index=False)
@@ -192,7 +219,7 @@ def run_first_sse_experiment(
 
     for spec in EXPERIMENTS:
         for partition_name, start, end in PARTITIONS:
-            part = _slice_dates(dataset, start, end)
+            part = _slice_dates(dataset, start, end, target=spec.target)
             real, null = _screen_partition(
                 part,
                 spec=spec,
@@ -220,14 +247,20 @@ def run_first_sse_experiment(
         (out_dir / "data_manifest.json").write_text(manifest.to_json() + "\n", encoding="utf-8")
 
     run_meta = {
+        "analysis_status": "CORRECTED_REANALYSIS_OF_BURNED_V1",
+        "corrections": [
+            "vol_fwd_h now uses exactly t+1..t+h one-session returns",
+            "partition tails are purged by target horizon",
+            "market inference uses OLS HAC/Newey-West covariance",
+        ],
         "experiment_ids": [x.hypothesis_id for x in EXPERIMENTS],
         "partitions": [x[0] for x in PARTITIONS],
-        "sealed_holdout_v1": {
+        "burned_holdout_v1": {
             "start": "2021-01-01",
-            "status_after_this_run": "BURNED_FOR_V1_AFTER_FIRST_EVALUATION",
-            "rule": "No v1 rule/weight tuning may claim this interval as unseen after this run.",
+            "status": "ALREADY_BURNED; CORRECTED REANALYSIS ONLY",
         },
         "shift_null_sessions": list(SHIFT_SESSIONS),
+        "hac_maxlags": HAC_MAXLAGS,
         "minimum_observations_per_level": min_n,
         "rows": int(len(dataset)),
         "first_date": pd.to_datetime(dataset["date"]).min().strftime("%Y-%m-%d"),
@@ -239,36 +272,19 @@ def run_first_sse_experiment(
     )
 
     summary_lines = [
-        "# MetaAlpha — SSE Ziping First Experiment",
+        "# MetaAlpha — SSE Ziping Corrected v1 Reanalysis",
         "",
-        "This report is a preregistered statistical experiment, not an investment recommendation.",
+        "This replaces the statistical interpretation of the original first run. It does not restore the burned holdout.",
         "",
-        "## Data",
-        f"- rows: {len(dataset)}",
-        f"- first session: {run_meta['first_date']}",
-        f"- last session: {run_meta['last_date']}",
-        "",
-        "## Partitions",
-        "- development: through 2014-12-31",
-        "- validation: 2015-01-01 through 2020-12-31",
-        "- sealed_holdout_v1: 2021-01-01 onward",
-        "",
-        "The v1 holdout is considered burned after this first evaluation. Any subsequent rule change must be versioned and cannot reuse it as unseen evidence.",
+        "Corrections: strictly future-only volatility labels, partition-tail purging, and HAC/Newey-West inference.",
         "",
         "## Diagnostics",
+        "",
     ]
     if diagnostics.empty:
         summary_lines.append("No eligible tests met the minimum sample requirement.")
     else:
-        summary_lines.append("")
         summary_lines.append(diagnostics.to_markdown(index=False))
-    summary_lines.extend(
-        [
-            "",
-            "## Interpretation gate",
-            "A low historical p-value alone is not acceptance. The registered family must beat null controls, retain direction/effect through later partitions, and survive future forward testing.",
-        ]
-    )
     (out_dir / "SUMMARY.md").write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
 
     return {
@@ -280,20 +296,26 @@ def run_first_sse_experiment(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run MetaAlpha first SSE Ziping Zhenquan experiment")
+    parser = argparse.ArgumentParser(description="Run corrected MetaAlpha SSE Ziping v1 reanalysis")
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--input", type=Path, help="normalized/raw-compatible CSV with date/close")
-    source.add_argument("--fetch-akshare", action="store_true", help="fetch SSE index history via AKShare index_zh_a_hist")
+    source.add_argument("--fetch-akshare", action="store_true")
     parser.add_argument("--symbol", default="000001")
     parser.add_argument("--start", default="19901219")
-    parser.add_argument("--end", default="22220101")
-    parser.add_argument("--out", type=Path, default=Path("reports/sse_ziping_first"))
+    parser.add_argument("--end", default="20260814")
+    parser.add_argument("--provider", default="sina", choices=("sina", "tencent", "eastmoney_direct", "eastmoney_mapped"))
+    parser.add_argument("--out", type=Path, default=Path("reports/sse_ziping_corrected_v1"))
     parser.add_argument("--min-n", type=int, default=100)
     args = parser.parse_args()
 
     manifest: DataManifest | None = None
     if args.fetch_akshare:
-        raw, manifest = fetch_akshare_index(symbol=args.symbol, start_date=args.start, end_date=args.end)
+        raw, manifest = fetch_akshare_index(
+            symbol=args.symbol,
+            start_date=args.start,
+            end_date=args.end,
+            provider=args.provider,
+        )
     else:
         raw = pd.read_csv(args.input)
 
