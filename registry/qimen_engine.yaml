@@ -1,0 +1,131 @@
+schema_version: 1
+project: MetaAlpha
+engines:
+  - id: QIMEN_V1
+    version: 1
+    status: engine_validation_only
+    registered_at: 2026-08-16
+    title: Deterministic Shijia rotating-plate Qimen engine
+
+    market_evaluation_allowed: false
+    market_hypothesis_registered: false
+
+    convention:
+      method: 拆补法
+      plate_type: 转盘
+      timezone: Asia/Shanghai
+      market_anchor: '09:25:00'
+      calendar_engine: lunar_python==1.4.8
+      zi_sect: 1
+      center_host_palace: 2
+      yuan_method: day_jiazi_index_five_day_blocks
+      exact_solar_term_timestamp_required: true
+      true_center_source_retained: true
+
+    yuan_rule:
+      day_index_base: zero_based_60_jiazi
+      five_day_block: day_index // 5
+      yuan_index: (day_index // 5) % 3
+      fu_head_index: (day_index // 5) * 5
+      mapping:
+        '0': 上元
+        '1': 中元
+        '2': 下元
+
+    raw_outputs:
+      - pillars
+      - current_solar_term
+      - current_solar_term_timestamp
+      - dun
+      - ju_number
+      - yuan
+      - fu_head
+      - xunshou
+      - hidden_instrument
+      - earth_plate
+      - duty_star
+      - duty_star_true_source_palace
+      - duty_star_display_palace
+      - duty_door
+      - duty_door_true_source_palace
+      - duty_door_raw_destination_palace
+      - duty_door_display_palace
+      - heaven_stars
+      - heaven_stems
+      - doors
+      - spirits
+      - day_xunkong
+      - hour_xunkong
+      - yima
+      - fuyin
+      - fanyin
+
+    scoring:
+      auspiciousness_score_defined: false
+      market_direction_score_defined: false
+      fortune_score_defined: false
+
+    golden_fixtures:
+      - id: qimen_fixture_20260709_1030
+        datetime: '2026-07-09T10:30:00+08:00'
+        expected:
+          pillars: [丙午, 乙未, 甲申, 己巳]
+          jieqi: 小暑
+          jieqi_timestamp: '2026-07-07T09:56:57+08:00'
+          dun: 阴
+          ju: 2
+          yuan: 中元
+          fu_head: 甲申
+          xunshou: 甲子
+          hidden_instrument: 戊
+          duty_star: 天芮
+          duty_star_display_palace: 1
+          duty_door: 死门
+          duty_door_display_palace: 6
+          star_steps: 3
+          fuyin: false
+          fanyin: false
+      - id: qimen_fixture_20260101_1200
+        datetime: '2026-01-01T12:00:00+08:00'
+        expected:
+          pillars: [乙巳, 戊子, 乙亥, 壬午]
+          jieqi: 冬至
+          jieqi_timestamp: '2025-12-21T23:03:05+08:00'
+          dun: 阳
+          ju: 4
+          yuan: 下元
+          fu_head: 甲戌
+          xunshou: 甲戌
+          hidden_instrument: 己
+          xunshou_true_palace: 5
+          duty_star: 天禽
+          duty_star_display_palace: 8
+          duty_door: 死门
+          duty_door_raw_destination_palace: 4
+          duty_door_display_palace: 4
+          star_steps: 4
+          fuyin: false
+          fanyin: true
+
+    validation_gate:
+      require_all_golden_fixtures: true
+      require_exact_solar_term_boundary_tests: true
+      require_center_palace_fixture: true
+      require_yang_and_yin_fixture: true
+      require_plate_permutation_integrity: true
+      require_zero_aggregate_scores: true
+
+    convention_controls:
+      - id: QIMEN_CONTROL_QFDK_DAYINDEX
+        status: future_control_only
+        reason: >-
+          Independent implementation exposes a different/ambiguous three-yuan convention.
+          It must never be mixed into QIMEN_V1 or selected using market outcomes.
+
+    forbidden_actions:
+      - evaluate A-share outcomes before engine validation passes
+      - switch from 拆补 to 置闰 after viewing market results
+      - infer center-host handling from whichever convention improves backtest performance
+      - add auspiciousness weights to QIMEN_V1
+      - silently change the 09:25 market anchor
+      - silently use whole-day solar-term boundaries
