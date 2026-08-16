@@ -1,0 +1,73 @@
+version: 1
+frozen_at: '2026-08-16'
+hypothesis_id: HYBRID_REPL_001
+status: PREREGISTERED_EXTERNAL_INDEX_REPLICATION
+selection_source: HYBRID_ALPHA_001
+purpose: 'Test whether the frozen cycle and ziping incremental models replicate outside the Shanghai Composite without changing features, model family, tuning grid, windows or gate.'
+indices:
+  - id: sse50
+    name: SSE 50
+    market_prefix: sh
+    symbol: '000016'
+  - id: csi300
+    name: CSI 300
+    market_prefix: sh
+    symbol: '000300'
+  - id: csi500
+    name: CSI 500
+    market_prefix: sh
+    symbol: '000905'
+  - id: sz_component
+    name: Shenzhen Component
+    market_prefix: sz
+    symbol: '399001'
+data:
+  provider_required: sina
+  requested_start: '19901219'
+  historical_end: '20260814'
+  minimum_training_rows: 500
+prediction:
+  anchor: '09:25 Asia/Shanghai'
+  target: same_session_close_to_close_direction
+  market_information_cutoff: t_minus_1_close
+models:
+  baseline: 'exact HYBRID_ALPHA_001 frozen lagged-market baseline'
+  candidates:
+    - cycle
+    - ziping
+  symbolic_features: 'exact frozen HYBRID_ALPHA_001 feature lists; no additions or deletions'
+  model_family: ridge_logistic_regression
+  c_grid: [0.01, 0.1, 1.0, 10.0]
+  inner_train_cut_fractions: [0.60, 0.70, 0.80]
+  inner_validation_fraction: 0.10
+  c_tie_break: smallest_C
+outer_walk_forward:
+  windows:
+    - ['2010-01-01', '2013-12-31']
+    - ['2014-01-01', '2017-12-31']
+    - ['2018-01-01', '2021-12-31']
+    - ['2022-01-01', '2026-08-14']
+  training: expanding
+  embargo_sessions: 1
+per_index_gate:
+  required_test_windows_with_logloss_improvement: 3
+  required_test_windows_with_brier_improvement: 3
+  full_oos_logloss_improvement_min: 0.001
+  full_oos_brier_improvement_min: 0.0005
+  auc_degradation_max: 0.005
+  bootstrap_blocks: 20
+  bootstrap_repetitions: 2000
+  bootstrap_seed: 20260816
+  bootstrap_probability_positive_min: 0.95
+  holm_family: [cycle, ziping]
+  holm_applied_separately_to: [log_loss, brier_score]
+  holm_adjusted_one_sided_p_max: 0.05
+replication_gate:
+  required_indices_passing_full_gate: 3
+  total_indices: 4
+  evaluated_separately_for: [cycle, ziping]
+  no_best_index_selection: true
+interpretation:
+  - PASS means cross-index historical replication of the frozen predictive algorithm, not metaphysical causality
+  - FAIL cannot be rescued by dropping an index, changing the feature set, changing the model or changing the gate under this hypothesis id
+  - Shanghai Composite is excluded from replication counting because it was the model-selection market
