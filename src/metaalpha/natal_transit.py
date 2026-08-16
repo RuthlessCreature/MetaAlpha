@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -54,25 +55,35 @@ def _pillars_as_lists(p: Pillars) -> tuple[list[str], list[str]]:
     return [x[0] for x in ps], [x[1] for x in ps]
 
 
+@lru_cache(maxsize=32)
 def natal_pillars(spec: NatalChartSpec = SSE_NATAL_V1) -> Pillars:
+    """Calculate an immutable natal chart once per frozen chart specification."""
     return pillars_from_datetime(spec.anchor)
 
 
-def natal_static_features(spec: NatalChartSpec = SSE_NATAL_V1) -> dict[str, object]:
+@lru_cache(maxsize=32)
+def _natal_static_items(spec: NatalChartSpec = SSE_NATAL_V1) -> tuple[tuple[str, object], ...]:
     p = natal_pillars(spec)
     z = features_from_pillars(p.year, p.month, p.day, p.time)
-    return {
-        "natal__v1__chart_id": spec.id,
-        "natal__v1__anchor": spec.anchor.isoformat(),
-        "natal__v1__year_pillar": p.year,
-        "natal__v1__month_pillar": p.month,
-        "natal__v1__day_pillar": p.day,
-        "natal__v1__time_pillar": p.time,
-        "natal__v1__day_master": p.day_stem,
-        "natal__v1__pattern_candidate": z["zpzt__v1__pattern_candidate"],
-        "natal__v1__month_primary_ten_god": z["zpzt__v1__month_primary_ten_god"],
-        "natal__v1__use_mode": z["zpzt__v1__use_mode"],
-    }
+    return tuple(
+        {
+            "natal__v1__chart_id": spec.id,
+            "natal__v1__anchor": spec.anchor.isoformat(),
+            "natal__v1__year_pillar": p.year,
+            "natal__v1__month_pillar": p.month,
+            "natal__v1__day_pillar": p.day,
+            "natal__v1__time_pillar": p.time,
+            "natal__v1__day_master": p.day_stem,
+            "natal__v1__pattern_candidate": z["zpzt__v1__pattern_candidate"],
+            "natal__v1__month_primary_ten_god": z["zpzt__v1__month_primary_ten_god"],
+            "natal__v1__use_mode": z["zpzt__v1__use_mode"],
+        }.items()
+    )
+
+
+def natal_static_features(spec: NatalChartSpec = SSE_NATAL_V1) -> dict[str, object]:
+    # Return a fresh dict so callers cannot mutate the cached representation.
+    return dict(_natal_static_items(spec))
 
 
 def features_for_transit_datetime(
