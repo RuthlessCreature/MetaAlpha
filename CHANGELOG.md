@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.5.0-alpha — 2026-08-16
+
+### Added
+
+- `zpzt_use_v2`: source-constrained month-use change primitives for hidden-stem transmission and complete three-harmony transformations.
+- `zpzt_route_v3`: non-numeric 相神 / 成格 / 救应 route graph with explicit unresolved strength/quantity/position conditions.
+- `zpzt_structure_v4`: source-defined 财印 position states plus exact rooting and raw support/drain evidence.
+- `zpzt_route_v4`: refinement of the 财格佩印 position route into satisfied / blocked / ambiguous states without introducing a strength score.
+- Direct solar-term/Ganzhi cycle engine with exact previous/next solar-term timestamps and normalized interval phase.
+- `GANZHI_VOL_001`, a preregistered direct calendar-cycle versus future-five-session-volatility experiment.
+- Full-rank design and HAC restriction-covariance identifiability gates for incremental joint tests.
+- Five non-overlapping modulo-5 future-window robustness samples for overlapping five-session volatility targets.
+
+### Historical falsification results
+
+- `ZIPING_V2_001`: month-use changes alter roughly 26.6% of sessions but do not produce an independent stable next-session-return factor. The 2021-2026 wealth-polarity anomaly remains historically exposed and closely related to v1.
+- `ZIPING_V3_001`: one 2005-2014 unresolved-position feature passes family correction, but does not replicate in later eras. Gate result: FAIL.
+- `ZIPING_V4_001`: after resolving the source-defined 财印 position condition, the v3 anomaly disappears. No valid registered v4 feature passes family correction in any era. A 47-session shifted null is materially stronger in 2021-2026. Gate result: FAIL.
+- The first v4 execution is explicitly invalidated for inference because one registered route-state block is structurally collinear with the frozen v3 route-state baseline. The corrected run excludes mathematically unidentified tests from FDR.
+- `GANZHI_VOL_001`: late-era calendar/solar-term blocks can strongly classify historical volatility regimes, but the exact phases fail shifted controls, full-history stability and non-overlapping robustness. Gate result: FAIL; no forward volatility experiment is opened.
+
+### Research decision
+
+- Stop adding progressively more detailed single-session Ziping next-return features to the already-exposed history.
+- Keep `ZIPING_FWD_001` unchanged as the only active forward Ziping candidate; all evidence begins 2026-08-17.
+- Treat the direct Ganzhi/solar-term volatility result as regime synchronization rather than stable phase-specific predictive information.
+- New traditional-system branches must be independently specified and preregistered before historical market evaluation.
+
 ## 0.4.0-alpha — 2026-08-16
 
 ### Added
