@@ -18,7 +18,7 @@ on:
           - prediction
           - score
       date:
-        description: 'Prediction date YYYY-MM-DD; blank uses current Shanghai date'
+        description: 'Prediction date YYYY-MM-DD; if supplied it must equal current Shanghai date'
         required: false
         type: string
 
@@ -53,9 +53,14 @@ jobs:
         id: generate
         shell: bash
         run: |
+          TODAY=$(TZ=Asia/Shanghai date +%F)
           DATE='${{ inputs.date }}'
           if [ -z "$DATE" ]; then
-            DATE=$(TZ=Asia/Shanghai date +%F)
+            DATE="$TODAY"
+          fi
+          if [ "$DATE" != "$TODAY" ]; then
+            echo "Refusing non-current target date: target=$DATE Shanghai-today=$TODAY"
+            exit 1
           fi
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
           OUT="forward/META_FWD_001/predictions/${DATE}.json"
@@ -64,12 +69,14 @@ jobs:
             exit 0
           fi
           python -m metaalpha.forward_meta signal --date "$DATE" --out "$OUT"
-      - name: Audit prediction structure before commit
+      - name: Audit prediction structure and daily-refit cadence before commit
         run: |
           python -m metaalpha.forward_audit \
             --predictions-dir forward/META_FWD_001/predictions \
             --repo-root . \
             --skip-git-history
+          python -m metaalpha.forward_daily_refit_audit \
+            --predictions-dir forward/META_FWD_001/predictions
       - name: Commit immutable tournament prediction
         run: |
           git config user.name 'github-actions[bot]'
@@ -107,6 +114,8 @@ jobs:
           python -m metaalpha.forward_audit \
             --predictions-dir forward/META_FWD_001/predictions \
             --repo-root .
+          python -m metaalpha.forward_daily_refit_audit \
+            --predictions-dir forward/META_FWD_001/predictions
       - name: Lock new realized outcomes and score only from locked ledger
         run: |
           END=$(TZ=Asia/Shanghai date +%Y%m%d)
