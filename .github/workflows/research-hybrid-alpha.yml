@@ -1,0 +1,46 @@
+name: HYBRID_ALPHA_001 Incremental OOS Exploration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-hybrid-alpha.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research dependencies
+        run: pip install -e '.[data]'
+      - name: Run preregistered HYBRID_ALPHA_001
+        run: >-
+          python -m metaalpha.research_hybrid_alpha
+          --fetch-akshare
+          --provider sina
+          --symbol 000001
+          --start 19901219
+          --end 20260814
+          --out reports/hybrid_alpha_exploratory
+      - name: Show evidence status and provenance
+        if: success()
+        run: |
+          cat reports/hybrid_alpha_exploratory/SUMMARY.md
+          cat reports/hybrid_alpha_exploratory/run_metadata.json
+          cat reports/hybrid_alpha_exploratory/data_manifest.json
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hybrid-alpha-${{ github.sha }}
+          path: reports/hybrid_alpha_exploratory
+          if-no-files-found: warn
+          retention-days: 30
