@@ -21,6 +21,7 @@ jobs:
           python-version: '3.11'
       - name: Install research dependencies
         run: pip install -e '.[data]'
+      # Runner precomputes fake-natal and shifted controls once for the full history.
       - name: Run historical exploratory natal-transit experiment
         run: >-
           python -m metaalpha.research_natal
