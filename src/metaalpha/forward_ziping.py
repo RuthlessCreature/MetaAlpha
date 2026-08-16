@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import Iterable
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -66,20 +65,38 @@ def _anchor_for_date(date_value: str | pd.Timestamp) -> datetime:
     )
 
 
+def _json_safe(value):
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, (np.floating, float)):
+        return float(value) if np.isfinite(value) else None
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.bool_):
+        return bool(value)
+    return value
+
+
 def generate_signal_record(
     date_value: str | pd.Timestamp,
     *,
     generated_at: datetime | str | pd.Timestamp | None = None,
 ) -> dict[str, object]:
-    """Create one immutable, deterministic forward signal record.
+    """Create one deterministic forward signal before the outcome exists.
 
-    The record is valid for confirmatory scoring only when it was generated
-    before the registered 09:25 Asia/Shanghai anchor and on/after 2026-08-17.
-    A non-偏财 day is still recorded as a valid no-call observation; days are
-    never cherry-picked after the outcome is known.
+    Confirmatory eligibility requires both:
+    1. date >= 2026-08-17;
+    2. the record timestamp is earlier than 09:25 Asia/Shanghai on that date.
+
+    Every candidate weekday is recorded, including no-call days. Actual market
+    sessions are determined later by the pinned market data, so holidays cannot
+    be cherry-picked in or out after the return is known.
     """
     date = pd.Timestamp(date_value).normalize()
-    generated = _as_shanghai_datetime(generated_at or datetime.now(timezone.utc))
+    generated_source = generated_at if generated_at is not None else datetime.now(timezone.utc)
+    generated = _as_shanghai_datetime(generated_source)
     anchor = _anchor_for_date(date)
 
     pillars = pillars_from_datetime(
@@ -137,13 +154,13 @@ def write_signal_record(
     *,
     generated_at: datetime | str | pd.Timestamp | None = None,
 ) -> dict[str, object]:
-    """Write a signal exactly once. Existing files are never overwritten."""
+    """Write a signal exactly once; an existing precommit is immutable."""
     if out_path.exists():
         raise FileExistsError(f"refusing to overwrite precommitted signal: {out_path}")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     record = generate_signal_record(date_value, generated_at=generated_at)
     out_path.write_text(
-        json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(_json_safe(record), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return record
@@ -170,7 +187,12 @@ def _one_sided_positive_p(two_sided_p: float, coefficient: float) -> float:
     return float(two_sided_p / 2.0) if coefficient > 0 else float(1.0 - two_sided_p / 2.0)
 
 
-def _fit_calendar_adjusted_hac(df: pd.DataFrame, signal_col: str) -> dict[str, float]:
+def _fit_calendar_adjusted_hac(
+    df: pd.DataFrame,
+    signal_col: str,
+    *,
+    maxlags: int,
+) -> dict[str, float]:
     base = df[["date", TARGET, signal_col]].dropna().copy().sort_values("date")
     if base.empty or base[signal_col].nunique() < 2:
         return {
@@ -191,7 +213,7 @@ def _fit_calendar_adjusted_hac(df: pd.DataFrame, signal_col: str) -> dict[str, f
     design = sm.add_constant(design, prepend=True)
     fitted = sm.OLS(base[TARGET].to_numpy(dtype=float), design).fit(
         cov_type="HAC",
-        cov_kwds={"maxlags": HAC_MAXLAGS, "use_correction": True},
+        cov_kwds={"maxlags": int(maxlags), "use_correction": True},
     )
     coefficient = float(fitted.params[signal_col])
     p_two = float(fitted.pvalues[signal_col])
@@ -277,11 +299,13 @@ def score_forward_experiment(
         else float("nan")
     )
 
-    primary = _fit_calendar_adjusted_hac(joined, "signal")
+    primary = _fit_calendar_adjusted_hac(joined, "signal", maxlags=gate.hac_maxlags)
     null_models: dict[str, dict[str, float]] = {}
     for shift in SHIFT_NULLS:
         col = f"shift_{shift}"
-        null_models[str(shift)] = _fit_calendar_adjusted_hac(joined.dropna(subset=[col]), col)
+        null_models[str(shift)] = _fit_calendar_adjusted_hac(
+            joined.dropna(subset=[col]), col, maxlags=gate.hac_maxlags
+        )
 
     finite_null_betas = [
         x["coefficient_bps"]
@@ -353,19 +377,26 @@ def write_score_outputs(
     out_dir.mkdir(parents=True, exist_ok=True)
     signals = load_signal_records(signals_dir)
     result = score_forward_experiment(market, signals)
+
+    gate_path = out_dir / "gate_result.json"
+    if gate_path.exists():
+        locked = json.loads(gate_path.read_text(encoding="utf-8"))
+        result["monitoring_status"] = result.get("status")
+        result["status"] = "GATE_LOCKED"
+        result["locked_gate_decision"] = locked.get("status")
+        result["locked_gate_total_scored_sessions"] = locked.get("total_scored_sessions")
+    elif result.get("status") in {"CONFIRMED_FORWARD_CANDIDATE", "GATE_FAILED"}:
+        gate_path.write_text(
+            json.dumps(_json_safe(result), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
     (out_dir / "latest_status.json").write_text(
-        json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=True) + "\n",
+        json.dumps(_json_safe(result), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     if manifest is not None:
         (out_dir / "latest_data_manifest.json").write_text(manifest.to_json() + "\n", encoding="utf-8")
-
-    gate_path = out_dir / "gate_result.json"
-    if result.get("status") in {"CONFIRMED_FORWARD_CANDIDATE", "GATE_FAILED"} and not gate_path.exists():
-        gate_path.write_text(
-            json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=True) + "\n",
-            encoding="utf-8",
-        )
     return result
 
 
@@ -388,7 +419,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.command == "signal":
         record = write_signal_record(args.date, args.out)
-        print(json.dumps(record, ensure_ascii=False, sort_keys=True))
+        print(json.dumps(_json_safe(record), ensure_ascii=False, sort_keys=True))
         return
 
     market, manifest = fetch_akshare_index(
@@ -398,7 +429,7 @@ def main() -> None:
         provider=args.provider,
     )
     result = write_score_outputs(market, args.signals_dir, args.out_dir, manifest=manifest)
-    print(json.dumps(result, ensure_ascii=False, sort_keys=True, allow_nan=True))
+    print(json.dumps(_json_safe(result), ensure_ascii=False, sort_keys=True))
 
 
 if __name__ == "__main__":
