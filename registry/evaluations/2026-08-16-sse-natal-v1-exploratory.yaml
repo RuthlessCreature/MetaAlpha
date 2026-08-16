@@ -1,0 +1,41 @@
+schema_version: 1
+evaluation_id: SSE_NATAL_V1_EXPLORATORY_20260816
+evaluated_at: 2026-08-16
+workflow_run_id: 31939164150
+artifact_id: 9261535973
+evidence_status: exploratory_only
+natal_anchor:
+  id: SSE_NATAL_V1
+  datetime: 1990-12-19T11:00:00+08:00
+  calculated_pillars: 庚午 戊子 戊午 戊午
+  day_master: 戊
+  pattern_candidate: 财格
+  month_primary_ten_god: 正财
+data:
+  symbol: '000001'
+  source: AKShare / Eastmoney direct index history
+  source_method: ak.stock_zh_index_daily_em
+  source_version: 1.18.84
+  rows: 8704
+  first_date: 1990-12-19
+  last_date: 2026-08-14
+  canonical_sha256: ca752500245963330ca3fbe5938cf1a29f12fc6d1e4e984149d325081efabb59
+controls:
+  shift_sessions: [17, 31, 47]
+  fake_natal_offsets_calendar_days: [17, 31, 47]
+decisions:
+  - hypothesis_id: SSE_NATAL_001
+    decision: no_return_candidate
+    full_history_real_min_family_fdr: 0.1798431
+    full_history_fake_min_family_fdr: 0.1321333
+    note: No real-natal next-session return family passes family-wide FDR in any descriptive era.
+  - hypothesis_id: SSE_NATAL_002
+    decision: association_present_anchor_specificity_rejected
+    full_history_real_min_family_fdr: 1.168206e-09
+    full_history_fake_min_family_fdr: 4.404844e-16
+    full_history_shift_min_family_fdr: 5.338567e-07
+    note: Forward-volatility associations are strong but fake natal anchors and shifted controls are also strongly significant, often stronger than the real anchor.
+next_gate:
+  - provider_reconciliation
+  - direct_ganzhi_and_solar_term_volatility_tests
+  - no_additional_sse_natal_anchor_tuning_without_new_forward_evidence
