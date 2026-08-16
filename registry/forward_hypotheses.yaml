@@ -1,0 +1,82 @@
+schema_version: 1
+project: MetaAlpha
+forward_hypotheses:
+  - id: ZIPING_FWD_001
+    version: 1
+    branch: bazi_ziping
+    status: forward_registered
+    title: Post-hoc 偏财 month-command candidate versus next-session SSE return
+    registered_at: 2026-08-16
+    forward_start: 2026-08-17
+    evidence_boundary: All observations through 2026-08-14 are historical and exposed; none may be reused as unseen confirmation.
+
+    origin:
+      source_hypothesis: ZIPING_001
+      source_status: corrected_reanalysis_of_burned_v1
+      nomination_reason: >-
+        In the already-exposed 2021+ interval, month_primary_ten_god=偏财 was the only
+        standalone Ziping return level that survived the corrected HAC family screen.
+        Earlier development/validation periods did not replicate it, therefore the
+        historical anomaly is nomination-only and cannot itself count as confirmation.
+      historical_effect_is_not_acceptance: true
+
+    rule:
+      calendar_convention: lunar_python 1.4.8; Asia/Shanghai; session anchor 09:25
+      classical_method: Ziping Zhenquan month-command-first operationalization
+      feature: zpzt__v1__month_primary_ten_god
+      level: 偏财
+      target: ret_fwd_1
+      forecast_when_level_matches: positive_next_session_return
+      forecast_otherwise: no_call
+      market: Shanghai Composite index 000001
+      provider: sina
+      provider_method: ak.stock_zh_index_daily
+      provider_switching_for_confirmation: forbidden
+
+    precommit_integrity:
+      create_every_candidate_weekday: true
+      cherry_pick_dates: forbidden
+      overwrite_existing_signal_file: forbidden
+      eligible_only_if_generated_before: 09:25 Asia/Shanghai on signal date
+      holidays: signal may be precommitted but is scored only if the date is an actual market session
+      immutable_path_pattern: forward/ZIPING_FWD_001/signals/YYYY-MM-DD.json
+
+    primary_model:
+      formula: ret_fwd_1 ~ I(month_primary_ten_god == 偏财) + Gregorian weekday FE + Gregorian month FE
+      covariance: Newey-West HAC
+      hac_maxlags: 5
+      alternative: beta_signal > 0
+      one_sided_alpha: 0.025
+
+    controls:
+      - same signal shifted by 17 actual trading sessions
+      - same signal shifted by 31 actual trading sessions
+      - same signal shifted by 47 actual trading sessions
+      - Gregorian weekday fixed effects
+      - Gregorian month fixed effects
+
+    gate:
+      evaluation_time: first scored session at which all sample thresholds are satisfied
+      minimum_total_scored_sessions: 300
+      minimum_signal_sessions: 30
+      minimum_calendar_adjusted_effect_bps: 10
+      require_one_sided_p_lte: 0.025
+      require_first_half_raw_difference_positive: true
+      require_second_half_raw_difference_positive: true
+      require_beta_greater_than_all_shift_controls: true
+      gate_result_is_one_time_and_immutable: true
+
+    decisions:
+      before_gate: COLLECTING
+      pass_all_gate_conditions: CONFIRMED_FORWARD_CANDIDATE
+      fail_any_gate_condition: GATE_FAILED
+      meaning_of_confirmation: statistical forward candidate only; not proof of metaphysical causality and not an investment recommendation
+
+    forbidden_actions:
+      - change 偏财 to another ten-god level after seeing forward outcomes
+      - change 09:25 anchor inside version 1
+      - change target horizon inside version 1
+      - change provider because another provider gives a better result
+      - repeatedly re-test the primary gate after a failed one-time gate
+      - count a signal generated after 09:25 as confirmatory evidence
+      - treat historical 2021-2026 data as unseen evidence
