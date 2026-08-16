@@ -1,0 +1,91 @@
+version: 1
+frozen_at: '2026-08-16'
+family_id: META_FWD_001
+status: PREREGISTERED_FUTURE_ONLY_BRANCH_TOURNAMENT
+forward_start: '2026-08-17'
+purpose: 'Prospectively compare a finite frozen family of symbolic branches on the same unseen Shanghai Composite sessions without choosing a winner from historical backtests.'
+market:
+  symbol: '000001'
+  provider_required: sina
+  anchor: '09:25 Asia/Shanghai'
+  target: same_session_close_to_close_direction
+baseline:
+  definition: 'exact HYBRID_ALPHA_001 lagged-market baseline'
+  market_information_cutoff: t_minus_1_close
+candidate_branches:
+  - id: cycle
+    engine: calendar_cycle_v1
+    historical_status: HYBRID_ALPHA_PASS_HYBRID_REPL_FAIL
+  - id: ziping
+    engine: ZIPING_V2_V3_V4
+    historical_status: HYBRID_ALPHA_PASS_HYBRID_REPL_FAIL
+  - id: qimen
+    engine: QIMEN_V1
+    historical_status: HYBRID_ALPHA_FAIL
+  - id: meihua
+    engine: MEIHUA_TIME_V1
+    historical_status: NEVER_MARKET_TESTED_AT_REGISTRATION
+negative_controls:
+  - id: liuyao_hash
+    engine: LIUYAO_HASH_V1
+    eligible_to_win: false
+    purpose: 'deterministic pseudo-random six-line date hash; estimates how often a structurally rich meaningless symbolic state appears predictive'
+model_policy:
+  family: ridge_logistic_regression
+  c_grid: [0.01, 0.1, 1.0, 10.0]
+  inner_train_cut_fractions: [0.60, 0.70, 0.80]
+  inner_validation_fraction: 0.10
+  c_tie_break: smallest_C
+  expanding_daily_refit: true
+  exact_same_market_baseline: true
+  no_branch_specific_market_baseline: true
+record_policy:
+  immutable_daily_record: true
+  record_timestamp_must_be_before: 'target-date 09:25 Asia/Shanghai'
+  no_overwrite: true
+  all_candidates_must_be_present_for_session_eligibility: true
+  coverage_min: 0.98
+future_gate:
+  first_n_eligible_settled_sessions: 500
+  gate_runs_once: true
+  chronological_subwindows: 4
+  required_subwindows_with_logloss_improvement: 3
+  required_subwindows_with_brier_improvement: 3
+  mean_logloss_improvement_min: 0.001
+  mean_brier_improvement_min: 0.0005
+  auc_degradation_max: 0.005
+  bootstrap:
+    block_sessions: 20
+    repetitions: 2000
+    seed: 20260816
+    probability_positive_min: 0.95
+  family_multiple_testing:
+    method: holm
+    family: [cycle, ziping, qimen, meihua]
+    applied_separately_to: [log_loss, brier_score]
+    adjusted_one_sided_p_max: 0.05
+  winner_rule:
+    candidate_must_pass_full_gate: true
+    ranking_if_multiple_pass: 'lowest LogLoss on the locked first-500 sample; ranking is descriptive after family-wise PASS and does not change the PASS threshold'
+    no_winner_if_none_pass: true
+negative_control_rule:
+  liuyao_hash_passes_candidate_like_gate:
+    interpretation: 'research alarm: branch-family complexity may be generating false positives; no symbolic winner is promoted without separate review'
+meihua_convention:
+  timezone: Asia/Shanghai
+  anchor_time: '09:25'
+  calendar: lunar date obtained from lunar_python_1.4.8
+  year_number: 'lunar-year earthly-branch ordinal, 子=1 through 亥=12'
+  leap_month: 'absolute lunar month number; leap month shares the corresponding regular month number'
+  time_number: 'earthly-branch ordinal of anchor time; 09:25 is 巳=6'
+  upper_trigram: '(year_number + lunar_month + lunar_day) mod 8, zero remainder means 8'
+  lower_trigram: '(year_number + lunar_month + lunar_day + time_number) mod 8, zero remainder means 8'
+  moving_line: '(year_number + lunar_month + lunar_day + time_number) mod 6, zero remainder means 6'
+  earlier_heaven_trigram_order: [乾, 兑, 离, 震, 巽, 坎, 艮, 坤]
+  body_use: 'trigram containing moving line is 用; the other trigram is 体'
+  fortune_score_defined: false
+stop_rules:
+  - no new candidate branch may be added to META_FWD_001 after the first eligible prediction record
+  - no feature deletion, interaction search, model-family switch or gate weakening under this family id
+  - historical results discovered after registration cannot change future model definitions
+  - branch winner means predictive algorithm evidence only, never metaphysical causality
