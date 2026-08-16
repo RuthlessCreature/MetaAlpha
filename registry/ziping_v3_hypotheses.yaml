@@ -1,0 +1,84 @@
+schema_version: 1
+project: MetaAlpha
+hypotheses:
+  - id: ZIPING_V3_001
+    version: 1
+    branch: bazi_ziping_assistant_route_graph
+    status: exploratory_registered_no_unseen_history
+    registered_at: 2026-08-16
+    title: Incremental information from source-constrained 相神 / 成格 / 救应 route states
+
+    evidence_boundary: >-
+      All Shanghai Composite observations through 2026-08-14 are already exposed at project level.
+      Historical v3 results are exploratory only and cannot confirm the hypothesis.
+
+    classical_basis:
+      principles:
+        - month-command use is taken from the frozen v2 use-change layer
+        - the assistant is not a fixed score; it is the element/stem/ten-god route on which formation depends
+        - route predicates encode explicit 官财印食杀伤刃禄 formation/support relations
+        - source examples such as 合伤存官, 合杀存财, and removing a resource blocker so food can control killing are represented as mechanical route states
+        - conditions explicitly requiring 身强, 印轻, 伤旺, 根轻 or position remain unresolved rather than being replaced by arbitrary numeric weights
+      aggregate_score_defined: false
+
+    target: ret_fwd_1
+    market:
+      symbol: '000001'
+      provider: sina
+      provider_method: ak.stock_zh_index_daily
+      provider_switching: forbidden inside comparison
+
+    primary_route_features:
+      - zpzt_route__v3__route_state
+      - zpzt_route__v3__route_hit_count
+      - zpzt_route__v3__route_unresolved_count
+      - zpzt_route__v3__assistant_count
+      - zpzt_route__v3__source_example_rescue_hit_count
+      - zpzt_route__v3__requires_strength_route_count
+      - zpzt_route__v3__requires_position_route_count
+      - zpzt_route__v3__requires_quantity_route_count
+      - zpzt_route__v3__visible_combination_pair_count
+
+    baseline_covariates:
+      - zpzt_use__v2__selected_ten_god fixed effects
+      - Gregorian weekday fixed effects
+      - Gregorian month fixed effects
+
+    primary_inference:
+      model_per_route_feature: >-
+        ret_fwd_1 ~ selected_ten_god_FE + weekday_FE + Gregorian_month_FE + route_feature_FE
+      covariance: Newey-West HAC
+      hac_maxlags: 5
+      test: joint Wald test that all route_feature dummy coefficients equal zero
+      multiplicity: Benjamini-Hochberg across all registered route features within each era
+      rare_level_rule: map each route-feature level with fewer than 100 observations in the era to __RARE__ before dummy encoding
+      minimum_rows: 500
+
+    controls:
+      - repeat each route-feature test after shifting that feature by 17 actual dataset sessions
+      - repeat each route-feature test after shifting that feature by 31 actual dataset sessions
+      - repeat each route-feature test after shifting that feature by 47 actual dataset sessions
+      - retain current v2 selected-use fixed effects in both registered and shifted-control models
+
+    descriptive_eras:
+      - history_all: 1990-12-19..2026-08-14
+      - era_1990_2004: 1990-12-19..2004-12-31
+      - era_2005_2014: 2005-01-01..2014-12-31
+      - era_2015_2020: 2015-01-01..2020-12-31
+      - era_2021_2026: 2021-01-01..2026-08-14
+      - purge the final session of every era before fitting ret_fwd_1
+
+    exploratory_interest_gate:
+      require_joint_family_fdr_lte: 0.05
+      require_same_route_feature_joint_fdr_lte_in_at_least_two_of_era_2005_2014_era_2015_2020_era_2021_2026: true
+      require_registered_feature_not_materially_weaker_than_its_shifted_controls: true
+      require_level_direction_followup_before_any_future_nomination: true
+      meaning: nomination for a separately frozen forward-only rule only
+
+    forbidden_actions:
+      - call historical v3 results confirmatory
+      - replace unresolved classical strength/quantity/position conditions with tuned scalar weights under version 1
+      - drop the v2 selected-use baseline because it reduces v3 significance
+      - choose a different HAC lag after viewing the result
+      - choose a different market-data provider after viewing the result
+      - add/remove registered route features after historical evaluation and still call them version 1
