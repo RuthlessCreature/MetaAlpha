@@ -9,12 +9,17 @@ from .calendar_features import add_gregorian_features
 from .controls import add_deterministic_null_controls
 from .ganzhi import add_ganzhi_features
 from .labels import add_forward_labels
+from .natal_transit import add_sse_natal_transit_features
 from .validation import evaluate_categorical_feature
 from .zpzt_state import add_ziping_state_features
 from .zpzt_strength import add_ziping_strength_primitives
 
 
-def build_dataset(df: pd.DataFrame, include_ziping: bool = False) -> pd.DataFrame:
+def build_dataset(
+    df: pd.DataFrame,
+    include_ziping: bool = False,
+    include_natal_transit: bool = False,
+) -> pd.DataFrame:
     required = {"date", "close"}
     missing = required - set(df.columns)
     if missing:
@@ -29,6 +34,8 @@ def build_dataset(df: pd.DataFrame, include_ziping: bool = False) -> pd.DataFram
         out = add_ziping_features(out)
         out = add_ziping_strength_primitives(out)
         out = add_ziping_state_features(out)
+    if include_natal_transit:
+        out = add_sse_natal_transit_features(out)
     out = add_deterministic_null_controls(out)
     out = add_forward_labels(out)
     return out
@@ -42,6 +49,8 @@ def run_screen(df: pd.DataFrame, target: str = "ret_fwd_1") -> pd.DataFrame:
         "zpzt__v1__",
         "zpzt_strength__v1__",
         "zpzt_state__v1__",
+        "natal__v1__",
+        "natal_transit__v1__",
     )
     feature_cols = [c for c in df.columns if c.startswith(prefixes)]
     reports = []
@@ -63,13 +72,22 @@ def main() -> None:
     parser.add_argument(
         "--ziping",
         action="store_true",
-        help="enable Ganzhi + Ziping Zhenquan primitive/strength/成败救应 features",
+        help="enable Ganzhi + standalone Ziping Zhenquan primitive/strength/成败救应 features",
+    )
+    parser.add_argument(
+        "--natal-transit",
+        action="store_true",
+        help="enable frozen SSE_NATAL_V1 natal-chart versus transit relation features",
     )
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
     raw = pd.read_csv(args.input)
-    dataset = build_dataset(raw, include_ziping=args.ziping)
+    dataset = build_dataset(
+        raw,
+        include_ziping=args.ziping,
+        include_natal_transit=args.natal_transit,
+    )
     dataset.to_csv(args.out / "dataset.csv", index=False)
 
     screen = run_screen(dataset, args.target)
