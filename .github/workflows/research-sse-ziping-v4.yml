@@ -1,4 +1,4 @@
-name: SSE Ziping V4 Structural Predicate Exploration
+name: SSE Ziping V4 Corrected Structural Predicate Exploration
 
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
           python-version: '3.11'
       - name: Install research dependencies
         run: pip install -e '.[data]'
-      - name: Run ZIPING_V4_001 on pinned Sina history
+      - name: Run corrected ZIPING_V4_001 on pinned Sina history
         run: >-
           python -m metaalpha.research_ziping_v4
           --fetch-akshare
@@ -32,17 +32,18 @@ jobs:
           --out reports/sse_ziping_v4_exploratory
           --min-level-n 100
           --min-rows 500
-      - name: Show evidence status and provenance
+      - name: Show corrected evidence status and provenance
         if: success()
         run: |
           cat reports/sse_ziping_v4_exploratory/SUMMARY.md
           cat reports/sse_ziping_v4_exploratory/run_metadata.json
           cat reports/sse_ziping_v4_exploratory/data_manifest.json
-      - name: Upload research artifact
+          cat reports/sse_ziping_v4_exploratory/invalid_inference_tests.csv
+      - name: Upload corrected research artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sse-ziping-v4-${{ github.sha }}
+          name: sse-ziping-v4-corrected-${{ github.sha }}
           path: reports/sse_ziping_v4_exploratory
           if-no-files-found: warn
           retention-days: 30
