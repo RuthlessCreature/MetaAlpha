@@ -67,6 +67,39 @@ def _collapse_rare(series: pd.Series, min_n: int) -> pd.Series:
     return values.map(lambda x: "__RARE__" if x in rare else x)
 
 
+def _invalid_joint_row(
+    *,
+    feature: str,
+    n: int,
+    levels: int,
+    feature_dummy_count: int,
+    design_rank: int,
+    design_columns: int,
+    constraint_cov_rank: int,
+    invalid_reason: str,
+) -> dict[str, object]:
+    return {
+        "feature": feature,
+        "n": int(n),
+        "levels_after_rare_collapse": int(levels),
+        "feature_dummy_count": int(feature_dummy_count),
+        "wald_stat": np.nan,
+        "p_value": np.nan,
+        "delta_r2": np.nan,
+        "full_r2": np.nan,
+        "max_abs_beta_bps": np.nan,
+        "design_rank": int(design_rank),
+        "design_columns": int(design_columns),
+        "rank_deficient": int(design_rank < design_columns),
+        "constraint_cov_rank": int(constraint_cov_rank),
+        "constraint_count": int(feature_dummy_count),
+        "valid_inference": 0,
+        "invalid_reason": invalid_reason,
+        "inference": "INVALID_OLS_HAC_JOINT_WALD",
+        "hac_maxlags": HAC_MAXLAGS,
+    }
+
+
 def _joint_feature_test(
     df: pd.DataFrame,
     feature: str,
@@ -75,6 +108,17 @@ def _joint_feature_test(
     min_rows: int,
     maxlags: int,
 ) -> tuple[dict[str, object] | None, pd.DataFrame]:
+    """Run one incremental categorical block test with explicit identifiability QC.
+
+    A joint test is inferentially valid only when both conditions hold:
+
+    1. the complete OLS design matrix is full column rank;
+    2. the HAC covariance submatrix for the tested feature-dummy block is full rank.
+
+    Invalid tests are retained in the audit table with ``p_value=NaN`` and are
+    excluded from BH-FDR. This prevents structural collinearity or singular HAC
+    restrictions from producing meaningless coefficients/p-values.
+    """
     needed = ["date", TARGET, *BASELINE_FEATURES, feature]
     base = df[needed].dropna().copy().sort_values("date").reset_index(drop=True)
     if len(base) < min_rows:
@@ -109,13 +153,45 @@ def _joint_feature_test(
     )
     y = base[TARGET].to_numpy(dtype=float)
 
+    feature_cols = list(feature_dummies.columns)
+    design_array = x_full.to_numpy(dtype=float)
+    design_rank = int(np.linalg.matrix_rank(design_array))
+    design_columns = int(x_full.shape[1])
+    if design_rank < design_columns:
+        row = _invalid_joint_row(
+            feature=feature,
+            n=len(base),
+            levels=base[feature].nunique(),
+            feature_dummy_count=len(feature_cols),
+            design_rank=design_rank,
+            design_columns=design_columns,
+            constraint_cov_rank=0,
+            invalid_reason="design_matrix_rank_deficient",
+        )
+        return row, pd.DataFrame()
+
     fit_base = sm.OLS(y, x_base).fit()
     fit = sm.OLS(y, x_full).fit(
         cov_type="HAC",
         cov_kwds={"maxlags": int(maxlags), "use_correction": True},
     )
 
-    feature_cols = list(feature_dummies.columns)
+    cov = fit.cov_params()
+    feature_cov = cov.loc[feature_cols, feature_cols].to_numpy(dtype=float)
+    constraint_cov_rank = int(np.linalg.matrix_rank(feature_cov))
+    if constraint_cov_rank < len(feature_cols):
+        row = _invalid_joint_row(
+            feature=feature,
+            n=len(base),
+            levels=base[feature].nunique(),
+            feature_dummy_count=len(feature_cols),
+            design_rank=design_rank,
+            design_columns=design_columns,
+            constraint_cov_rank=constraint_cov_rank,
+            invalid_reason="hac_constraint_covariance_rank_deficient",
+        )
+        return row, pd.DataFrame()
+
     parameter_names = list(x_full.columns)
     restriction = np.zeros((len(feature_cols), len(parameter_names)), dtype=float)
     for row_idx, col in enumerate(feature_cols):
@@ -130,12 +206,12 @@ def _joint_feature_test(
             "coefficient_bps": float(fit.params[col]) * 10000.0,
             "t_stat": float(fit.tvalues[col]),
             "p_value": float(fit.pvalues[col]),
+            "valid_inference": 1,
         }
         for col in feature_cols
     ]
     coef_df = pd.DataFrame(coef_rows)
 
-    rank = int(np.linalg.matrix_rank(x_full.to_numpy(dtype=float)))
     row = {
         "feature": feature,
         "n": int(len(base)),
@@ -146,9 +222,13 @@ def _joint_feature_test(
         "delta_r2": float(fit.rsquared - fit_base.rsquared),
         "full_r2": float(fit.rsquared),
         "max_abs_beta_bps": float(coef_df["coefficient_bps"].abs().max()),
-        "design_rank": rank,
-        "design_columns": int(x_full.shape[1]),
-        "rank_deficient": int(rank < x_full.shape[1]),
+        "design_rank": design_rank,
+        "design_columns": design_columns,
+        "rank_deficient": 0,
+        "constraint_cov_rank": constraint_cov_rank,
+        "constraint_count": int(len(feature_cols)),
+        "valid_inference": 1,
+        "invalid_reason": "",
         "inference": "ols_hac_joint_wald",
         "hac_maxlags": int(maxlags),
     }
@@ -215,8 +295,20 @@ def _apply_fdr(joint: pd.DataFrame) -> pd.DataFrame:
     out["p_fdr_bh_family"] = np.nan
     for _, idx in out.groupby(["era", "test_kind"]).groups.items():
         loc = list(idx)
-        out.loc[loc, "p_fdr_bh_family"] = benjamini_hochberg(out.loc[loc, "p_value"])
-    return out.sort_values(["era", "test_kind", "p_fdr_bh_family", "p_value"]).reset_index(drop=True)
+        valid_loc = [
+            i for i in loc
+            if int(out.at[i, "valid_inference"]) == 1 and np.isfinite(out.at[i, "p_value"])
+        ]
+        if not valid_loc:
+            continue
+        out.loc[valid_loc, "p_fdr_bh_family"] = benjamini_hochberg(
+            out.loc[valid_loc, "p_value"]
+        )
+    return out.sort_values(
+        ["era", "test_kind", "valid_inference", "p_fdr_bh_family", "p_value"],
+        ascending=[True, True, False, True, True],
+        na_position="last",
+    ).reset_index(drop=True)
 
 
 def _diagnostics(joint: pd.DataFrame) -> pd.DataFrame:
@@ -224,15 +316,19 @@ def _diagnostics(joint: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     rows = []
     for keys, g in joint.groupby(["era", "test_kind"], dropna=False):
+        valid = g.loc[g["valid_inference"] == 1].copy()
         rows.append(
             {
                 "era": keys[0],
                 "test_kind": keys[1],
-                "tests": int(len(g)),
-                "min_family_fdr": float(g["p_fdr_bh_family"].min()),
-                "max_delta_r2": float(g["delta_r2"].max()),
-                "max_abs_beta_bps": float(g["max_abs_beta_bps"].max()),
-                "rank_deficient_tests": int(g["rank_deficient"].sum()),
+                "tests_total": int(len(g)),
+                "valid_tests": int(len(valid)),
+                "invalid_tests": int(len(g) - len(valid)),
+                "min_family_fdr": float(valid["p_fdr_bh_family"].min()) if not valid.empty else np.nan,
+                "max_delta_r2": float(valid["delta_r2"].max()) if not valid.empty else np.nan,
+                "max_abs_beta_bps": float(valid["max_abs_beta_bps"].max()) if not valid.empty else np.nan,
+                "design_rank_deficient_tests": int((g["invalid_reason"] == "design_matrix_rank_deficient").sum()),
+                "hac_constraint_rank_deficient_tests": int((g["invalid_reason"] == "hac_constraint_covariance_rank_deficient").sum()),
             }
         )
     return pd.DataFrame(rows).sort_values(["era", "test_kind"]).reset_index(drop=True)
@@ -271,12 +367,15 @@ def run_ziping_v4_exploration(
     diagnostics.to_csv(out_dir / "diagnostic_summary.csv", index=False)
     eras.to_csv(out_dir / "era_boundaries.csv", index=False)
 
+    invalid = joint.loc[joint["valid_inference"] == 0].copy()
+    invalid.to_csv(out_dir / "invalid_inference_tests.csv", index=False)
+
     if manifest is not None:
         (out_dir / "data_manifest.json").write_text(manifest.to_json() + "\n", encoding="utf-8")
 
     metadata = {
         "hypothesis_id": HYPOTHESIS_ID,
-        "status": "EXPLORATORY_ONLY_NO_UNSEEN_HISTORY",
+        "status": "CORRECTED_EXPLORATORY_REANALYSIS_AFTER_INFERENCE_QC",
         "historical_last_date": "2026-08-14",
         "target": TARGET,
         "baseline_covariates": list(BASELINE_FEATURES),
@@ -288,6 +387,14 @@ def run_ziping_v4_exploration(
         "provider_required": "sina",
         "strength_score_defined": False,
         "fortune_score_defined": False,
+        "supersedes_run_for_inference": "31946158306",
+        "superseded_run_status": "INVALIDATED_FOR_INFERENCE_QC",
+        "qc_corrections": [
+            "joint tests require a full-rank complete design matrix",
+            "HAC covariance submatrix for the tested dummy block must be full rank",
+            "invalid tests retain an audit row with p_value=NaN and are excluded from BH-FDR",
+            "invalid coefficients are not emitted into the coefficient table or diagnostic maxima",
+        ],
     }
     (out_dir / "run_metadata.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -295,11 +402,13 @@ def run_ziping_v4_exploration(
     )
 
     lines = [
-        "# ZIPING_V4_001 — Structural Predicate Historical Exploration",
+        "# ZIPING_V4_001 — Corrected Structural Predicate Historical Exploration",
         "",
-        "**Evidence status: EXPLORATORY ONLY. Historical observations are not an unseen holdout.**",
+        "**Evidence status: CORRECTED EXPLORATORY REANALYSIS. Historical observations are not an unseen holdout.**",
         "",
-        "The frozen baseline already includes v2 selected-use ten-god fixed effects, v3 route-state fixed effects, Gregorian weekday fixed effects and Gregorian month fixed effects.",
+        "The first v4 run (31946158306) is invalidated for inferential use because at least one registered joint test used a rank-deficient design / singular restriction covariance. This corrected run preserves the registered feature definitions and baseline, but excludes mathematically unidentified tests from BH-FDR.",
+        "",
+        "The frozen baseline includes v2 selected-use ten-god fixed effects, v3 route-state fixed effects, Gregorian weekday fixed effects and Gregorian month fixed effects.",
         "",
         "V4 tests whether source-constrained position/root/support predicates add incremental next-session-return information. No numeric strong/weak or fortune score is defined.",
         "",
@@ -315,7 +424,7 @@ def run_ziping_v4_exploration(
             "",
             "## Gate",
             "",
-            "Historical interest requires the same registered v4 feature to survive family correction in at least two of 2005-2014, 2015-2020 and 2021-2026, while not being materially weaker than its 17/31/47-session shifted controls. Promotion would still require a separately frozen future-only experiment.",
+            "Historical interest requires the same valid registered v4 feature to survive family correction in at least two of 2005-2014, 2015-2020 and 2021-2026, while not being materially weaker than its 17/31/47-session shifted controls. Promotion would still require a separately frozen future-only experiment.",
         ]
     )
     (out_dir / "SUMMARY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -325,6 +434,7 @@ def run_ziping_v4_exploration(
         "joint": joint,
         "coefficients": coefficients,
         "diagnostics": diagnostics,
+        "invalid": invalid,
         "eras": eras,
     }
 
@@ -363,6 +473,7 @@ def main() -> None:
     )
     print(f"rows={len(result['dataset'])}")
     print(f"joint_tests={len(result['joint'])}")
+    print(f"invalid_tests={len(result['invalid'])}")
     print(f"report={args.out / 'SUMMARY.md'}")
 
 
