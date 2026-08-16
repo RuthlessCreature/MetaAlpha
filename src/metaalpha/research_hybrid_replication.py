@@ -45,6 +45,25 @@ INDEX_CONFIG = (
 )
 
 
+def prepare_replication_raw(raw: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Apply the preregistered replication-only volume QC rule.
+
+    Price/date rows are never dropped here. Non-positive upstream volume
+    placeholders become missing values only, so one-session close-to-close
+    targets remain defined on the original market calendar. Frozen
+    volume-derived predictors then become missing naturally and the common-row
+    policy excludes affected feature rows later.
+    """
+    if "volume" not in raw.columns:
+        raise ValueError("replication raw data requires volume")
+    out = raw.copy()
+    out["volume"] = pd.to_numeric(out["volume"], errors="coerce")
+    bad = out["volume"].notna() & (out["volume"] <= 0.0)
+    count = int(bad.sum())
+    out.loc[bad, "volume"] = np.nan
+    return out, count
+
+
 def build_replication_dataset(raw: pd.DataFrame) -> pd.DataFrame:
     out = add_market_baseline_features(raw)
     out = build_dataset(out, include_ziping=True, include_natal_transit=False)
@@ -232,7 +251,8 @@ def run_replication(out_dir: Path) -> dict[str, pd.DataFrame]:
             end_date=HISTORICAL_END,
             provider=PROVIDER,
         )
-        dataset = build_replication_dataset(raw)
+        prepared_raw, nonpositive_volume_rows = prepare_replication_raw(raw)
+        dataset = build_replication_dataset(prepared_raw)
         predictions, metrics, chosen_c = _run_index_walk_forward(dataset)
         gate = _evaluate_index_gate(predictions, metrics)
 
@@ -251,7 +271,16 @@ def run_replication(out_dir: Path) -> dict[str, pd.DataFrame]:
         chosen_c.to_csv(index_dir / "chosen_c.csv", index=False)
         gate.to_csv(index_dir / "gate.csv", index=False)
         (index_dir / "data_manifest.json").write_text(manifest.to_json(), encoding="utf-8")
-        manifest_rows.append({"index_id": index_id, "index_name": index_name, **json.loads(manifest.to_json()), "eligible_rows": len(dataset), "oos_rows": len(predictions)})
+        manifest_rows.append(
+            {
+                "index_id": index_id,
+                "index_name": index_name,
+                **json.loads(manifest.to_json()),
+                "nonpositive_volume_rows_mapped_missing": nonpositive_volume_rows,
+                "eligible_rows": len(dataset),
+                "oos_rows": len(predictions),
+            }
+        )
 
     gate_all = pd.concat(all_gate, ignore_index=True)
     metrics_all = pd.concat(all_metrics, ignore_index=True)
@@ -272,6 +301,8 @@ def run_replication(out_dir: Path) -> dict[str, pd.DataFrame]:
         "",
         "Frozen cycle and ziping models are evaluated without feature/model/gate changes on SSE 50, CSI 300, CSI 500 and Shenzhen Component. A model replicates only if at least 3 of 4 indices pass the complete per-index gate.",
         "",
+        "Upstream non-positive volume placeholders are mapped to missing for feature construction only. Price/date rows are retained, so close-to-close targets never skip a market session; common-row eligibility excludes rows whose frozen volume predictors are unavailable.",
+        "",
         "## Replication decision",
         "",
         tabulate(decision, headers="keys", tablefmt="github", showindex=False),
@@ -282,7 +313,22 @@ def run_replication(out_dir: Path) -> dict[str, pd.DataFrame]:
         "",
         "## Data manifests",
         "",
-        tabulate(manifests[["index_id", "symbol", "first_date", "last_date", "rows", "eligible_rows", "oos_rows", "canonical_sha256"]], headers="keys", tablefmt="github", showindex=False),
+        tabulate(
+            manifests[[
+                "index_id",
+                "symbol",
+                "first_date",
+                "last_date",
+                "rows",
+                "nonpositive_volume_rows_mapped_missing",
+                "eligible_rows",
+                "oos_rows",
+                "canonical_sha256",
+            ]],
+            headers="keys",
+            tablefmt="github",
+            showindex=False,
+        ),
         "",
     ]
     (out_dir / "SUMMARY.md").write_text("\n".join(summary), encoding="utf-8")
@@ -294,6 +340,7 @@ def run_replication(out_dir: Path) -> dict[str, pd.DataFrame]:
         "candidates": list(CANDIDATES),
         "required_indices_passed": 3,
         "replication_passes": int(decision["replication_pass"].sum()),
+        "volume_qc": "non-positive volume mapped to missing; price rows preserved",
     }
     (out_dir / "run_metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"index_gates": gate_all, "replication_decision": decision, "manifests": manifests}
