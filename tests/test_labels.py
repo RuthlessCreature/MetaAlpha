@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from metaalpha.labels import add_forward_labels
+from metaalpha.labels import add_forward_labels, purge_forward_boundary, target_forward_horizon
 
 
 def test_forward_returns_are_future_only():
@@ -34,8 +34,6 @@ def test_groups_do_not_leak_across_symbols():
 
 
 def test_forward_volatility_is_exactly_t_plus_1_through_t_plus_h():
-    # Construct closes from known one-session returns. At row 0, vol_fwd_5
-    # must use 1%,2%,3%,4%,5%; row 1 must use 2%,3%,4%,5%,6%.
     one_day_returns = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06]
     closes = [100.0]
     for r in one_day_returns:
@@ -55,3 +53,21 @@ def test_forward_volatility_is_exactly_t_plus_1_through_t_plus_h():
     assert np.isclose(out.loc[0, "vol_fwd_5"], expected_0)
     assert np.isclose(out.loc[1, "vol_fwd_5"], expected_1)
     assert pd.isna(out.loc[2, "vol_fwd_5"])
+
+
+def test_target_horizon_and_partition_tail_purge():
+    assert target_forward_horizon("ret_fwd_1") == 1
+    assert target_forward_horizon("vol_fwd_5") == 5
+    assert target_forward_horizon("extreme_loss_fwd_1") == 1
+
+    df = pd.DataFrame(
+        {
+            "symbol": ["A"] * 10 + ["B"] * 10,
+            "date": list(pd.date_range("2026-01-01", periods=10)) * 2,
+            "vol_fwd_5": np.arange(20, dtype=float),
+        }
+    )
+    purged = purge_forward_boundary(df, target="vol_fwd_5")
+    assert len(purged[purged.symbol == "A"]) == 5
+    assert len(purged[purged.symbol == "B"]) == 5
+    assert purged[purged.symbol == "A"]["date"].max() == pd.Timestamp("2026-01-05")
