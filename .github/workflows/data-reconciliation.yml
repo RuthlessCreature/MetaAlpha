@@ -21,6 +21,7 @@ jobs:
           python-version: '3.11'
       - name: Install data dependencies
         run: pip install -e '.[data]'
+      # Returns are computed after common-date alignment; missing sessions are separate QC output.
       - name: Reconcile Eastmoney Sina and Tencent
         run: >-
           python -m metaalpha.data_reconcile
