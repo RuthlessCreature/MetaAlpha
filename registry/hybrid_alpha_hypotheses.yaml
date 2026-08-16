@@ -63,7 +63,7 @@ hypotheses:
         source: ZIPING_V2_V3_V4
         features:
           - zpzt_use__v2__selected_ten_god
-          - zpzt_use__v2__selection_reason
+          - zpzt_use__v2__selection_mode
           - zpzt_route__v3__route_state
           - zpzt_structure__v4__wealth_resource_position_resolution
           - zpzt_structure__v4__selected_use_root_bin
@@ -78,6 +78,9 @@ hypotheses:
       solver: liblinear
       c_grid: [0.01, 0.1, 1.0, 10.0]
       hyperparameter_selection: expanding_inner_time_split_logloss
+      inner_train_cut_fractions: [0.60, 0.70, 0.80]
+      inner_validation_fraction: 0.10
+      c_tie_break: smallest_C
     outer_walk_forward:
       minimum_train_end: '2009-12-31'
       test_windows:
@@ -105,7 +108,9 @@ hypotheses:
       auc_degradation_max: 0.005
       bootstrap_blocks: 20
       bootstrap_repetitions: 2000
+      bootstrap_seed: 20260816
       one_sided_probability_improvement_min: 0.95
+      bootstrap_primary_losses_required: [log_loss, brier_score]
       promotion_rule: 'a symbolic block must satisfy all criteria; otherwise no forward promotion'
     controls:
       - identical market baseline for every comparison
