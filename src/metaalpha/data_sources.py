@@ -138,8 +138,26 @@ def _retry_call(
     raise RuntimeError(f"provider failed after {retries} attempts") from last_exc
 
 
+def _split_market_symbol(symbol: str) -> tuple[str, str, str]:
+    """Return (market_prefix, bare_code, provider_symbol).
+
+    Existing bare-code calls remain Shanghai by default for backward
+    compatibility. Replication work can pass explicit ``sz399001`` etc.
+    """
+    s = str(symbol).strip().lower()
+    if s.startswith(("sh", "sz")):
+        prefix = s[:2]
+        bare = s[2:]
+    else:
+        prefix = "sh"
+        bare = s
+    if prefix not in {"sh", "sz"} or not bare.isdigit() or len(bare) != 6:
+        raise ValueError("index symbol must be a 6-digit code or explicit sh/sz + 6-digit code")
+    return prefix, bare, f"{prefix}{bare}"
+
+
 def _provider_definitions(ak, *, symbol: str, start_date: str, end_date: str):
-    market_symbol = f"sh{symbol}"
+    _, bare_symbol, market_symbol = _split_market_symbol(symbol)
     return {
         "eastmoney_direct": (
             "AKShare / Eastmoney direct index history",
@@ -164,7 +182,7 @@ def _provider_definitions(ak, *, symbol: str, start_date: str, end_date: str):
             "AKShare / Eastmoney mapped index history",
             "ak.index_zh_a_hist",
             lambda: ak.index_zh_a_hist(
-                symbol=symbol,
+                symbol=bare_symbol,
                 period="daily",
                 start_date=start_date,
                 end_date=end_date,
@@ -184,14 +202,17 @@ def fetch_akshare_index(
 ) -> tuple[pd.DataFrame, DataManifest]:
     """Fetch one A-share index with either a pinned provider or frozen fallback chain.
 
-    ``provider='auto'`` uses ``PROVIDER_ORDER`` and is suitable for availability
-    but not for strict cross-run numerical comparison. Confirmatory research must
-    pin a provider explicitly and record its manifest/hash.
+    ``symbol`` accepts either a legacy bare six-digit code (treated as Shanghai,
+    preserving existing behavior) or an explicit provider-style code such as
+    ``sz399001``. ``provider='auto'`` is suitable for availability but not for
+    strict cross-run numerical comparison. Confirmatory research must pin a
+    provider explicitly and record its manifest/hash.
     """
     if retries < 1:
         raise ValueError("retries must be >= 1")
     if provider != "auto" and provider not in PROVIDER_ORDER:
         raise ValueError(f"unknown provider {provider!r}; expected auto or one of {PROVIDER_ORDER}")
+    _split_market_symbol(symbol)
 
     try:
         import akshare as ak  # type: ignore
