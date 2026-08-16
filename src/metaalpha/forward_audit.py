@@ -205,8 +205,11 @@ def _repo_relative(path: Path, repo_root: Path) -> str:
 
 def _git_touch_history(path: Path, repo_root: Path) -> list[tuple[str, pd.Timestamp]]:
     rel = _repo_relative(path, repo_root)
+    # Exact path only. Prediction-ledger files are never allowed to be renamed;
+    # --follow would invoke Git rename heuristics and can falsely attribute an
+    # unrelated predecessor JSON as another touch.
     proc = subprocess.run(
-        ["git", "log", "--follow", "--format=%H%x09%cI", "--", rel],
+        ["git", "log", "--format=%H%x09%cI", "--", rel],
         cwd=repo_root,
         check=False,
         capture_output=True,
