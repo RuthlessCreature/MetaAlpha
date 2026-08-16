@@ -1,0 +1,10 @@
+{
+  "experiment_ids": ["ZIPING_001", "ZIPING_002", "ZIPING_003", "ZIPING_004"],
+  "first_date": "1990-12-19",
+  "last_date": "2026-08-14",
+  "minimum_observations_per_level": 100,
+  "rows": 8704,
+  "sealed_holdout_v1_start": "2021-01-01",
+  "sealed_holdout_v1_status": "BURNED_FOR_V1_AFTER_FIRST_EVALUATION",
+  "shift_null_sessions": [17, 31, 47]
+}
