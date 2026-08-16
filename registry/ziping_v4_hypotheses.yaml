@@ -1,0 +1,97 @@
+schema_version: 1
+project: MetaAlpha
+hypotheses:
+  - id: ZIPING_V4_001
+    version: 1
+    branch: bazi_ziping_structural_predicates
+    status: exploratory_registered_no_unseen_history
+    registered_at: 2026-08-16
+    title: Incremental information from source-constrained position/root/support predicates
+
+    evidence_boundary: >-
+      All Shanghai Composite observations through 2026-08-14 are already exposed.
+      Historical v4 analysis is exploratory only and cannot confirm a trading hypothesis.
+
+    classical_basis:
+      resolved_predicate:
+        name: wealth_resource_position
+        source_rule: 财格佩印 requires 财印隔离不相碍; direct adjacency is treated as blocked
+        operationalization:
+          satisfied: every visible wealth/resource pair is separated by at least two stem positions
+          blocked: visible wealth/resource pairs are adjacent only
+          ambiguous: both adjacent and separated visible pairs exist
+          not_applicable: both visible families are not present
+      raw_unresolved_evidence:
+        - exact visible-stem rooting in year/month/day/time branches
+        - selected-use rooting count and root location
+        - day-master exact root count and month-root flag
+        - visible support/drain counts and their sign comparison
+        - assistant-route visible/rooted stem counts
+      strength_policy: >-
+        No raw rooting/support primitive is converted into a numeric strong/weak score.
+        Classical 身强/身弱/印轻/伤旺 conditions remain unresolved under v4.
+      aggregate_score_defined: false
+
+    target: ret_fwd_1
+    market:
+      symbol: '000001'
+      provider: sina
+      provider_method: ak.stock_zh_index_daily
+      provider_switching: forbidden inside comparison
+
+    registered_features:
+      - zpzt_structure__v4__wealth_resource_position_resolution
+      - zpzt_structure__v4__selected_use_root_bin
+      - zpzt_structure__v4__selected_use_root_month
+      - zpzt_structure__v4__assistant_rooted_stem_count
+      - zpzt_structure__v4__assistant_all_visible_rooted
+      - zpzt_structure__v4__daymaster_root_bin
+      - zpzt_structure__v4__daymaster_root_month
+      - zpzt_structure__v4__visible_support_balance
+      - zpzt_structure__v4__support_profile
+      - zpzt_route__v4__route_state
+      - zpzt_route__v4__resolved_from_position_count
+      - zpzt_route__v4__route_blocked_count
+
+    baseline_covariates:
+      - zpzt_use__v2__selected_ten_god fixed effects
+      - zpzt_route__v3__route_state fixed effects
+      - Gregorian weekday fixed effects
+      - Gregorian month fixed effects
+
+    primary_inference:
+      model_per_feature: >-
+        ret_fwd_1 ~ selected_ten_god_FE + v3_route_state_FE + weekday_FE + Gregorian_month_FE + v4_feature_FE
+      covariance: Newey-West HAC
+      hac_maxlags: 5
+      test: joint Wald test that all v4 feature dummy coefficients equal zero
+      multiplicity: Benjamini-Hochberg across the complete registered v4 feature family within each era
+      rare_level_rule: map levels with fewer than 100 era observations to __RARE__
+      minimum_rows: 500
+
+    controls:
+      - each registered feature shifted by 17 actual dataset sessions under the same frozen baseline
+      - each registered feature shifted by 31 actual dataset sessions under the same frozen baseline
+      - each registered feature shifted by 47 actual dataset sessions under the same frozen baseline
+
+    descriptive_eras:
+      - history_all: 1990-12-19..2026-08-14
+      - era_1990_2004: 1990-12-19..2004-12-31
+      - era_2005_2014: 2005-01-01..2014-12-31
+      - era_2015_2020: 2015-01-01..2020-12-31
+      - era_2021_2026: 2021-01-01..2026-08-14
+      - purge the final session of every era before fitting ret_fwd_1
+
+    exploratory_interest_gate:
+      require_same_registered_feature_family_fdr_lte_0_05_in_at_least_two_of_2005_2014_2015_2020_2021_2026: true
+      require_registered_feature_not_materially_weaker_than_its_shifted_controls: true
+      require_incremental_effect_after_v2_use_and_v3_route_baselines: true
+      meaning: nomination for a separately frozen future-only rule only
+
+    forbidden_actions:
+      - call any historical v4 result confirmatory
+      - tune the >=2-position separation rule after viewing market outcomes
+      - turn rooting/support primitives into fitted strength weights under version 1
+      - remove v2/v3 baseline covariates because they reduce significance
+      - choose a different HAC lag or provider after viewing results
+      - add or remove registered features after historical evaluation and still call the family version 1
