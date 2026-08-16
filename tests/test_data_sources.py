@@ -1,7 +1,11 @@
 import pandas as pd
 import pytest
 
-from metaalpha.data_sources import canonical_frame_sha256, normalize_akshare_index_frame
+from metaalpha.data_sources import (
+    _split_market_symbol,
+    canonical_frame_sha256,
+    normalize_akshare_index_frame,
+)
 
 
 def _raw_frame():
@@ -37,3 +41,11 @@ def test_invalid_ohlc_fails_loudly():
     raw.loc[0, "最高"] = 2900.0
     with pytest.raises(ValueError, match="invalid OHLC"):
         normalize_akshare_index_frame(raw, symbol="000001")
+
+
+def test_explicit_shenzhen_symbol_and_legacy_shanghai_default():
+    assert _split_market_symbol("000001") == ("sh", "000001", "sh000001")
+    assert _split_market_symbol("sh000300") == ("sh", "000300", "sh000300")
+    assert _split_market_symbol("sz399001") == ("sz", "399001", "sz399001")
+    with pytest.raises(ValueError):
+        _split_market_symbol("hkHSI")
