@@ -1,0 +1,48 @@
+name: SSE Ziping V4 Structural Predicate Exploration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-sse-ziping-v4.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research dependencies
+        run: pip install -e '.[data]'
+      - name: Run ZIPING_V4_001 on pinned Sina history
+        run: >-
+          python -m metaalpha.research_ziping_v4
+          --fetch-akshare
+          --provider sina
+          --symbol 000001
+          --start 19901219
+          --end 20260814
+          --out reports/sse_ziping_v4_exploratory
+          --min-level-n 100
+          --min-rows 500
+      - name: Show evidence status and provenance
+        if: success()
+        run: |
+          cat reports/sse_ziping_v4_exploratory/SUMMARY.md
+          cat reports/sse_ziping_v4_exploratory/run_metadata.json
+          cat reports/sse_ziping_v4_exploratory/data_manifest.json
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sse-ziping-v4-${{ github.sha }}
+          path: reports/sse_ziping_v4_exploratory
+          if-no-files-found: warn
+          retention-days: 30
