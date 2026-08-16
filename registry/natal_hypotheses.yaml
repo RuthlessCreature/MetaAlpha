@@ -1,0 +1,87 @@
+schema_version: 1
+project: MetaAlpha
+branch: sse_natal_transit_ziping
+frozen_at: 2026-08-16
+evidence_policy:
+  historical_through: 2026-08-14
+  historical_status: exploratory_only
+  confirmatory_start: 2026-08-17
+  rule: Historical observations through 2026-08-14 have already been exposed during project development and cannot be claimed as a new holdout.
+
+natal_anchor:
+  id: SSE_NATAL_V1
+  datetime: 1990-12-19T11:00:00+08:00
+  timezone: Asia/Shanghai
+  source_basis: Shanghai Stock Exchange formal opening date plus China Securities Museum exact 11:00 opening-gong record.
+
+fake_natal_controls:
+  - id: SSE_FAKE_NATAL_P17
+    datetime: 1991-01-05T11:00:00+08:00
+    construction: real natal anchor plus 17 calendar days
+  - id: SSE_FAKE_NATAL_P31
+    datetime: 1991-01-19T11:00:00+08:00
+    construction: real natal anchor plus 31 calendar days
+  - id: SSE_FAKE_NATAL_P47
+    datetime: 1991-02-04T11:00:00+08:00
+    construction: real natal anchor plus 47 calendar days
+
+hypotheses:
+  - id: SSE_NATAL_001
+    version: 1
+    status: registered_exploratory
+    title: SSE natal chart versus daily transit relations and next-session return
+    target: ret_fwd_1
+    feature_set:
+      - natal_transit__v1__day_stem_ten_god
+      - natal_transit__v1__day_branch_primary_ten_god
+      - natal_transit__v1__day_clashes_natal_day
+      - natal_transit__v1__day_clashes_natal_month
+      - natal_transit__v1__day_harms_natal_day
+      - natal_transit__v1__day_harms_natal_month
+      - natal_transit__v1__day_breaks_natal_day
+      - natal_transit__v1__day_breaks_natal_month
+      - natal_transit__v1__day_six_combines_natal_day
+      - natal_transit__v1__day_six_combines_natal_month
+      - natal_transit__v1__disruption_relation_count
+    multiple_testing_family: sse_natal_daily_return_v1
+    controls:
+      - shifted_sessions_17_31_47
+      - fake_natal_SSE_FAKE_NATAL_P17
+      - fake_natal_SSE_FAKE_NATAL_P31
+      - fake_natal_SSE_FAKE_NATAL_P47
+    interpretation: exploratory_only_until_forward_protocol_accumulates_new_sessions
+    acceptance:
+      family_fdr: 0.05
+      require_fake_natal_advantage: true
+      require_shift_null_advantage: true
+      require_forward_confirmation: true
+
+  - id: SSE_NATAL_002
+    version: 1
+    status: registered_exploratory
+    title: SSE natal chart versus transit disruption relations and forward five-session volatility
+    target: vol_fwd_5
+    feature_set:
+      - natal_transit__v1__branch_clash_count
+      - natal_transit__v1__branch_harm_count
+      - natal_transit__v1__branch_break_count
+      - natal_transit__v1__branch_six_combine_count
+      - natal_transit__v1__disruption_relation_count
+      - natal_transit__v1__month_branch_clashes_natal_count
+      - natal_transit__v1__month_branch_harms_natal_count
+      - natal_transit__v1__month_branch_breaks_natal_count
+      - natal_transit__v1__day_branch_clashes_natal_count
+      - natal_transit__v1__day_branch_harms_natal_count
+      - natal_transit__v1__day_branch_breaks_natal_count
+    multiple_testing_family: sse_natal_risk_v1
+    controls:
+      - shifted_sessions_17_31_47
+      - fake_natal_SSE_FAKE_NATAL_P17
+      - fake_natal_SSE_FAKE_NATAL_P31
+      - fake_natal_SSE_FAKE_NATAL_P47
+    interpretation: exploratory_only_until_forward_protocol_accumulates_new_sessions
+    acceptance:
+      family_fdr: 0.05
+      require_fake_natal_advantage: true
+      require_shift_null_advantage: true
+      require_forward_confirmation: true
