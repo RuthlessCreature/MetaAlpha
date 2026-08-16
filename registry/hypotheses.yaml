@@ -108,6 +108,68 @@ hypotheses:
       require_null_advantage: true
       require_incremental_over_calendar: true
 
+  - id: ZIPING_003
+    version: 1
+    branch: bazi_ziping
+    status: registered
+    title: Ziping Zhenquan provisional formation/failure/rescue state and next-session return
+    question: Does the preregistered 成/败/救应 state machine contain next-session return information?
+    feature_set:
+      - zpzt_state__v1__state
+      - zpzt_state__v1__formation_hit
+      - zpzt_state__v1__failure_hit
+      - zpzt_state__v1__rescue_hit
+      - zpzt_state__v1__requires_strength
+    target: ret_fwd_1
+    direction: exploratory
+    post_hoc: false
+    registered_at: 2026-08-16
+    classical_method: Ziping Zhenquan provisional 成败救应 operationalization; no aggregate fortune score
+    calendar_convention: lunar_python 1.4.8; Asia/Shanghai; session anchor 09:25
+    controls:
+      - control__v1__shift_17_sessions
+      - control__v1__shift_31_sessions
+      - control__v1__shift_47_sessions
+      - calendar__v1__weekday
+      - calendar__v1__month
+    multiple_testing_family: ziping_state_return_v1
+    acceptance:
+      min_observations_per_level: 100
+      require_oos: true
+      require_null_advantage: true
+      require_incremental_over_calendar: true
+
+  - id: ZIPING_004
+    version: 1
+    branch: bazi_ziping
+    status: registered
+    title: Ziping Zhenquan provisional formation/failure/rescue state and forward volatility
+    question: Does the preregistered 成/败/救应 state machine contain information about forward five-session volatility?
+    feature_set:
+      - zpzt_state__v1__state
+      - zpzt_state__v1__formation_hit
+      - zpzt_state__v1__failure_hit
+      - zpzt_state__v1__rescue_hit
+      - zpzt_state__v1__requires_strength
+    target: vol_fwd_5
+    direction: exploratory
+    post_hoc: false
+    registered_at: 2026-08-16
+    classical_method: Ziping Zhenquan provisional 成败救应 operationalization; no aggregate fortune score
+    calendar_convention: lunar_python 1.4.8; Asia/Shanghai; session anchor 09:25
+    controls:
+      - control__v1__shift_17_sessions
+      - control__v1__shift_31_sessions
+      - control__v1__shift_47_sessions
+      - calendar__v1__weekday
+      - calendar__v1__month
+    multiple_testing_family: ziping_state_risk_v1
+    acceptance:
+      min_observations_per_level: 100
+      require_oos: true
+      require_null_advantage: true
+      require_incremental_over_calendar: true
+
   - id: SOLARTERM_001
     version: 1
     branch: solar_term
