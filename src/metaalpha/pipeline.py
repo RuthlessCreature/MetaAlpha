@@ -13,6 +13,7 @@ from .natal_transit import add_sse_natal_transit_features
 from .validation import evaluate_categorical_feature
 from .zpzt_state import add_ziping_state_features
 from .zpzt_strength import add_ziping_strength_primitives
+from .zpzt_use_v2 import add_ziping_use_v2_features
 
 
 def build_dataset(
@@ -32,6 +33,9 @@ def build_dataset(
     if include_ziping:
         out = add_ganzhi_features(out)
         out = add_ziping_features(out)
+        # v2 is additive and versioned. It does not rewrite the historical v1
+        # month-primary features; it records source-constrained 用神变化 primitives.
+        out = add_ziping_use_v2_features(out)
         out = add_ziping_strength_primitives(out)
         out = add_ziping_state_features(out)
     if include_natal_transit:
@@ -47,6 +51,7 @@ def run_screen(df: pd.DataFrame, target: str = "ret_fwd_1") -> pd.DataFrame:
         "control__v1__random_",
         "ganzhi__v2__",
         "zpzt__v1__",
+        "zpzt_use__v2__",
         "zpzt_strength__v1__",
         "zpzt_state__v1__",
         "natal__v1__",
@@ -72,7 +77,7 @@ def main() -> None:
     parser.add_argument(
         "--ziping",
         action="store_true",
-        help="enable Ganzhi + standalone Ziping Zhenquan primitive/strength/成败救应 features",
+        help="enable Ganzhi + standalone Ziping v1 plus source-constrained 用神变化 v2 features",
     )
     parser.add_argument(
         "--natal-transit",
