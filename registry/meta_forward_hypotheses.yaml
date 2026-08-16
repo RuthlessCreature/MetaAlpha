@@ -16,20 +16,51 @@ candidate_branches:
   - id: cycle
     engine: calendar_cycle_v1
     historical_status: HYBRID_ALPHA_PASS_HYBRID_REPL_FAIL
+    features:
+      - cycle__v1__prev_jieqi
+      - cycle__v1__jieqi_phase_quartile
+      - cycle__v1__day_pillar
+      - cycle__v1__month_stem
+      - cycle__v1__month_branch
   - id: ziping
     engine: ZIPING_V2_V3_V4
     historical_status: HYBRID_ALPHA_PASS_HYBRID_REPL_FAIL
+    features:
+      - zpzt_use__v2__selected_ten_god
+      - zpzt_use__v2__selection_mode
+      - zpzt_route__v3__route_state
+      - zpzt_structure__v4__wealth_resource_position_resolution
+      - zpzt_structure__v4__selected_use_root_bin
+      - zpzt_structure__v4__support_profile
   - id: qimen
     engine: QIMEN_V1
     historical_status: HYBRID_ALPHA_FAIL
+    features:
+      - qimen__v1__dun_ju_yuan
+      - qimen__v1__duty_star_door
+      - qimen__v1__duty_landings
+      - qimen__v1__rotation_state
+      - qimen__v1__void_relation_state
+      - qimen__v1__yima_relation_state
   - id: meihua
     engine: MEIHUA_TIME_V1
     historical_status: NEVER_MARKET_TESTED_AT_REGISTRATION
+    features:
+      - meihua__v1__base_hexagram_key
+      - meihua__v1__moving_line
+      - meihua__v1__changed_hexagram_key
+      - meihua__v1__mutual_hexagram_key
+      - meihua__v1__body_use_relation
 negative_controls:
   - id: liuyao_hash
     engine: LIUYAO_HASH_V1
     eligible_to_win: false
     purpose: 'deterministic pseudo-random six-line date hash; estimates how often a structurally rich meaningless symbolic state appears predictive'
+    features:
+      - liuyao_hash__v1__base_pattern
+      - liuyao_hash__v1__changed_pattern
+      - liuyao_hash__v1__moving_count
+      - liuyao_hash__v1__moving_lines_key
 model_policy:
   family: ridge_logistic_regression
   c_grid: [0.01, 0.1, 1.0, 10.0]
