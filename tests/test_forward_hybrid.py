@@ -5,14 +5,14 @@ from metaalpha.forward_hybrid import MIN_GATE_SESSIONS, _settle, evaluate_gate
 
 
 def _gate_frame(n=MIN_GATE_SESSIONS):
-    rng = np.random.default_rng(123)
     dates = pd.bdate_range("2026-08-17", periods=n)
-    latent = rng.normal(size=n)
-    p_true = 1.0 / (1.0 + np.exp(-0.5 * latent))
-    y = rng.binomial(1, p_true)
-    base = np.clip(0.50 + 0.03 * latent, 0.05, 0.95)
-    cycle = np.clip(0.50 + 0.18 * latent, 0.05, 0.95)
-    ziping = np.full(n, 0.50)
+    # Deterministic balanced labels make this a gate-logic test rather than a
+    # stochastic model-quality test. `cycle` is an intentional oracle; `ziping`
+    # is intentionally identical to the baseline.
+    y = (np.arange(n) % 2).astype(int)
+    base = np.full(n, 0.50)
+    cycle = np.where(y == 1, 0.80, 0.20)
+    ziping = base.copy()
     returns = np.where(y == 1, 0.005, -0.005)
     return pd.DataFrame(
         {
@@ -32,6 +32,8 @@ def test_future_gate_is_model_specific_and_locked_shape():
     assert gate["sample_sessions"] == 500
     assert gate["models"]["cycle"]["gate_pass"] is True
     assert gate["models"]["cycle"]["decision"] == "PASS"
+    assert gate["models"]["cycle"]["windows_logloss_improved"] == 4
+    assert gate["models"]["cycle"]["windows_brier_improved"] == 4
     assert gate["models"]["ziping"]["gate_pass"] is False
     assert gate["models"]["ziping"]["decision"] == "FAIL"
 
