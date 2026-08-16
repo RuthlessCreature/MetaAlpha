@@ -1,0 +1,13 @@
+{
+  "canonical_sha256": "ca752500245963330ca3fbe5938cf1a29f12fc6d1e4e984149d325081efabb59",
+  "fetched_at_utc": "2026-08-16T09:29:40.125183+00:00",
+  "first_date": "1990-12-19",
+  "last_date": "2026-08-14",
+  "requested_end": "20260814",
+  "requested_start": "19901219",
+  "rows": 8704,
+  "source": "AKShare / Eastmoney direct index history",
+  "source_method": "ak.stock_zh_index_daily_em",
+  "source_version": "1.18.84",
+  "symbol": "000001"
+}
