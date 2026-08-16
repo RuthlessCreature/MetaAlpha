@@ -1,0 +1,50 @@
+schema_version: 1
+evaluation_id: SSE_ZIPING_V1_CORRECTED_20260816
+evaluated_at: 2026-08-16
+workflow_run_id: 31939806826
+artifact_id: 9261707465
+artifact_sha256: d4cdf9fa96ae55a76d40cd0edaeec8ca39f93665ac4129ecb32c7e2dd7b19103
+analysis_status: corrected_reanalysis_of_burned_v1
+methodology:
+  provider: sina
+  source_method: ak.stock_zh_index_daily
+  source_version: 1.18.84
+  data_sha256: 697af81a200060d42b04fa7a79b92fb8287e709ae10baf0825ae301fb4af5aa1
+  label_rule: strictly_future_only
+  partition_boundary: purge_target_horizon_rows
+  inference: OLS_HAC_Newey_West
+  hac_maxlags:
+    ret_fwd_1: 5
+    vol_fwd_5: 20
+  multiple_testing: BH_FDR_across_registered_family
+holdout:
+  start: 2021-01-01
+  status: burned_before_corrected_reanalysis
+decisions:
+  - hypothesis_id: ZIPING_001
+    decision: no_confirmatory_evidence_one_forward_candidate
+    development_min_family_fdr: 0.1895126245
+    validation_min_family_fdr: 0.4824881911
+    burned_holdout_min_family_fdr: 0.0366663239
+    burned_holdout_shift_null_min_family_fdr: 0.8900543533
+    forward_candidate:
+      feature: zpzt__v1__month_primary_ten_god
+      level: 偏财
+      direction: higher_next_session_return
+      n_in_burned_interval: 138
+      mean_target: 0.0026712965
+      rest_mean: -0.0001534476
+      effect_std: 0.2851701039
+      hac_t: 3.181202
+      raw_p: 0.00146665
+      family_fdr: 0.0366663239
+      status: post_hoc_forward_only
+  - hypothesis_id: ZIPING_002
+    decision: rejected
+    reason: corrected forward-volatility family is non-significant in every partition
+  - hypothesis_id: ZIPING_003
+    decision: rejected
+    reason: formation_failure_rescue return family is non-significant in every partition
+  - hypothesis_id: ZIPING_004
+    decision: rejected
+    reason: corrected forward-volatility family is non-significant in every partition
