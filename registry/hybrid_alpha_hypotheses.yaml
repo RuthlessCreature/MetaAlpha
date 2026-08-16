@@ -1,0 +1,116 @@
+version: 1
+frozen_at: '2026-08-16'
+
+hypotheses:
+  - id: HYBRID_ALPHA_001
+    title: Incremental symbolic-state value beyond lagged market information
+    status: PREREGISTERED_EXPLORATORY_OOS
+    market:
+      instrument: SSE Composite
+      symbol: '000001'
+      provider_required: sina
+      feature_anchor: '09:25 Asia/Shanghai'
+      historical_end: '2026-08-14'
+    target:
+      classification: same_session_direction
+      definition: '1 if close_t / close_{t-1} - 1 > 0, else 0'
+      continuous_audit_target: same_session_close_to_close_return
+    information_boundary:
+      market_features: 'must use data available no later than t-1 close'
+      symbolic_features: 'deterministic state at 09:25 on t'
+      same_session_market_predictor_used: false
+    baseline_features:
+      continuous:
+        - ret_lag_1
+        - ret_lag_2
+        - ret_lag_5
+        - ret_lag_10
+        - ret_lag_20
+        - abs_ret_lag_1
+        - vol_lag_5
+        - vol_lag_20
+        - overnight_gap_lag_1
+        - intraday_range_lag_1
+        - close_ma5_distance_lag_1
+        - close_ma20_distance_lag_1
+        - drawdown_20_lag_1
+        - volume_log_change_lag_1
+        - volume_z20_lag_1
+        - normalized_time
+        - normalized_time_squared
+      categorical:
+        - weekday
+        - gregorian_month
+    symbolic_blocks:
+      - id: cycle
+        source: calendar_cycle_v1
+        features:
+          - cycle__v1__prev_jieqi
+          - cycle__v1__jieqi_phase_quartile
+          - cycle__v1__day_pillar
+          - cycle__v1__month_stem
+          - cycle__v1__month_branch
+      - id: qimen
+        source: QIMEN_V1
+        features:
+          - qimen__v1__dun_ju_yuan
+          - qimen__v1__duty_star_door
+          - qimen__v1__duty_landings
+          - qimen__v1__rotation_state
+          - qimen__v1__void_relation_state
+          - qimen__v1__yima_relation_state
+      - id: ziping
+        source: ZIPING_V2_V3_V4
+        features:
+          - zpzt_use__v2__selected_ten_god
+          - zpzt_use__v2__selection_reason
+          - zpzt_route__v3__route_state
+          - zpzt_structure__v4__wealth_resource_position_resolution
+          - zpzt_structure__v4__selected_use_root_bin
+          - zpzt_structure__v4__support_profile
+      - id: all_symbolic
+        composition: [cycle, qimen, ziping]
+    model:
+      family: ridge_logistic_regression
+      numeric_scaling: standard
+      categorical_encoding: one_hot_handle_unknown
+      class_weight: null
+      solver: liblinear
+      c_grid: [0.01, 0.1, 1.0, 10.0]
+      hyperparameter_selection: expanding_inner_time_split_logloss
+    outer_walk_forward:
+      minimum_train_end: '2009-12-31'
+      test_windows:
+        - ['2010-01-01', '2013-12-31']
+        - ['2014-01-01', '2017-12-31']
+        - ['2018-01-01', '2021-12-31']
+        - ['2022-01-01', '2026-08-14']
+      training: expanding
+      embargo_sessions: 1
+    metrics:
+      primary:
+        - log_loss
+        - brier_score
+      secondary:
+        - roc_auc
+        - accuracy
+        - calibration_slope
+        - probability_spread_return
+      comparison: 'augmented minus baseline on identical OOS rows'
+    acceptance_gate:
+      required_test_windows_with_logloss_improvement: 3
+      required_test_windows_with_brier_improvement: 3
+      full_oos_logloss_improvement_min: 0.001
+      full_oos_brier_improvement_min: 0.0005
+      auc_degradation_max: 0.005
+      bootstrap_blocks: 20
+      bootstrap_repetitions: 2000
+      one_sided_probability_improvement_min: 0.95
+      promotion_rule: 'a symbolic block must satisfy all criteria; otherwise no forward promotion'
+    controls:
+      - identical market baseline for every comparison
+      - same OOS dates for baseline and augmented model
+      - no historical symbolic feature selection after seeing model results
+      - report all preregistered blocks including failures
+      - all_symbolic cannot rescue failed component blocks by post-hoc feature deletion
+    evidence_label: 'exploratory OOS over already-existing history; not a future holdout'
