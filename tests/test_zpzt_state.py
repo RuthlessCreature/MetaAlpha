@@ -27,7 +27,7 @@ def test_yang_blade_without_official_or_killings_is_failure_candidate():
 
 
 def test_strength_dependent_rule_is_not_forced_into_final_binary_judgment():
-    # 印格 is intentionally marked as requiring a separate strength layer.
-    state = evaluate_provisional_state("庚子", "壬申", "丙寅", "甲午")
-    if state.requires_strength:
-        assert state.state.endswith("_待强弱层")
+    # 丙日主寅月，寅本气甲为偏印 -> 印格。
+    state = evaluate_provisional_state("庚子", "甲寅", "丙午", "壬辰")
+    assert state.requires_strength is True
+    assert state.state.endswith("_待强弱层")
