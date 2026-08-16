@@ -26,6 +26,7 @@ data:
   requested_start: '19901219'
   historical_end: '20260814'
   minimum_training_rows: 500
+  row_eligibility: 'common complete rows for baseline + cycle + ziping only; qimen/all_symbolic are excluded and cannot remove rows'
 prediction:
   anchor: '09:25 Asia/Shanghai'
   target: same_session_close_to_close_direction
