@@ -21,12 +21,6 @@ on:
         description: 'Prediction date YYYY-MM-DD; blank uses current Shanghai date'
         required: false
         type: string
-  # One-time bootstrap path: creation of this workflow precommits 2026-08-17.
-  # After the first record is verified this trigger is removed.
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/forward-hybrid.yml'
 
 permissions:
   contents: write
@@ -38,7 +32,6 @@ concurrency:
 jobs:
   prediction:
     if: >-
-      github.event_name == 'push' ||
       (github.event_name == 'schedule' && github.event.schedule == '0 0 * * 1-5') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'prediction')
     runs-on: ubuntu-latest
@@ -56,13 +49,9 @@ jobs:
         id: generate
         shell: bash
         run: |
-          if [ '${{ github.event_name }}' = 'push' ]; then
-            DATE='2026-08-17'
-          else
-            DATE='${{ inputs.date }}'
-            if [ -z "$DATE" ]; then
-              DATE=$(TZ=Asia/Shanghai date +%F)
-            fi
+          DATE='${{ inputs.date }}'
+          if [ -z "$DATE" ]; then
+            DATE=$(TZ=Asia/Shanghai date +%F)
           fi
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
           OUT="forward/HYBRID_FWD_001/predictions/${DATE}.json"
