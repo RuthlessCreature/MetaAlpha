@@ -1,4 +1,4 @@
-name: SSE Natal Transit Historical Exploration
+name: SSE Natal Transit Corrected Historical Exploration
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   research:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,26 +21,26 @@ jobs:
           python-version: '3.11'
       - name: Install research dependencies
         run: pip install -e '.[data]'
-      # Runner precomputes fake-natal and shifted controls once for the full history.
-      - name: Run historical exploratory natal-transit experiment
+      - name: Run corrected historical natal-transit exploration on pinned Sina data
         run: >-
           python -m metaalpha.research_natal
           --fetch-akshare
+          --provider sina
           --symbol 000001
           --start 19901219
           --end 20260814
-          --out reports/sse_natal_exploratory
+          --out reports/sse_natal_corrected
           --min-n 100
-      - name: Show evidence status and provenance
+      - name: Show correction status and provenance
         if: success()
         run: |
-          cat reports/sse_natal_exploratory/run_metadata.json
-          cat reports/sse_natal_exploratory/data_manifest.json
-      - name: Upload research artifact
+          cat reports/sse_natal_corrected/run_metadata.json
+          cat reports/sse_natal_corrected/data_manifest.json
+      - name: Upload corrected research artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sse-natal-exploratory-${{ github.sha }}
-          path: reports/sse_natal_exploratory
+          name: sse-natal-corrected-${{ github.sha }}
+          path: reports/sse_natal_corrected
           if-no-files-found: warn
           retention-days: 30
