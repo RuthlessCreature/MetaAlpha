@@ -82,17 +82,15 @@ ERAS = (
 
 
 def fake_natal_specs() -> tuple[NatalChartSpec, ...]:
-    specs = []
-    for offset in FAKE_NATAL_OFFSETS:
-        specs.append(
-            NatalChartSpec(
-                id=f"SSE_FAKE_NATAL_P{offset}",
-                anchor=SSE_NATAL_V1.anchor + timedelta(days=offset),
-                source="deterministic fake-anchor control",
-                rationale=f"SSE_NATAL_V1 plus {offset} calendar days; control only",
-            )
+    return tuple(
+        NatalChartSpec(
+            id=f"SSE_FAKE_NATAL_P{offset}",
+            anchor=SSE_NATAL_V1.anchor + timedelta(days=offset),
+            source="deterministic fake-anchor control",
+            rationale=f"SSE_NATAL_V1 plus {offset} calendar days; control only",
         )
-    return tuple(specs)
+        for offset in FAKE_NATAL_OFFSETS
+    )
 
 
 def _slice_dates(df: pd.DataFrame, start: str | None, end: str | None) -> pd.DataFrame:
@@ -110,15 +108,25 @@ def _fake_feature_name(spec_id: str, real_feature: str) -> str:
     return f"control_fake_natal__{spec_id}__{suffix}"
 
 
-def _add_fake_natal_features(
+def _all_registered_features() -> tuple[str, ...]:
+    return tuple(sorted({feature for spec in EXPERIMENTS for feature in spec.features}))
+
+
+def _add_fake_natal_features_once(
     df: pd.DataFrame,
     *,
     real_features: Iterable[str],
-) -> tuple[pd.DataFrame, list[str]]:
+) -> pd.DataFrame:
+    """Calculate each fake natal chart once for the full dataset.
+
+    Earlier prototype code recalculated the same fake chart for each era and
+    hypothesis. That was statistically equivalent but wasteful. This version
+    changes only execution cost, not any registered feature definition.
+    """
     out = df.copy()
-    fake_names: list[str] = []
     dates = out["date"].tolist()
     wanted = tuple(real_features)
+    new_columns: dict[str, pd.Series] = {}
 
     for spec in fake_natal_specs():
         rows = [features_for_transit_datetime(v, spec=spec) for v in dates]
@@ -126,24 +134,39 @@ def _add_fake_natal_features(
         for real_feature in wanted:
             if real_feature not in feat.columns:
                 raise ValueError(f"fake natal engine missing registered feature: {real_feature}")
-            fake_name = _fake_feature_name(spec.id, real_feature)
-            out[fake_name] = feat[real_feature]
-            fake_names.append(fake_name)
-    return out, fake_names
+            new_columns[_fake_feature_name(spec.id, real_feature)] = feat[real_feature]
+
+    if new_columns:
+        out = pd.concat([out, pd.DataFrame(new_columns, index=out.index)], axis=1)
+    return out
 
 
-def _add_shift_nulls(
+def _add_shift_nulls_once(
     df: pd.DataFrame,
     *,
     real_features: Iterable[str],
-) -> tuple[pd.DataFrame, list[str]]:
+) -> pd.DataFrame:
     out = df.copy()
-    names: list[str] = []
     for feature in real_features:
         for shift in SHIFT_SESSIONS:
             out = add_shifted_feature(out, feature, shift_rows=shift)
-            names.append(f"control__v1__shift_{shift}__{feature}")
-    return out, names
+    return out
+
+
+def _shift_features_for(spec: NatalExperimentSpec) -> list[str]:
+    return [
+        f"control__v1__shift_{shift}__{feature}"
+        for feature in spec.features
+        for shift in SHIFT_SESSIONS
+    ]
+
+
+def _fake_features_for(spec: NatalExperimentSpec) -> list[str]:
+    return [
+        _fake_feature_name(fake.id, feature)
+        for fake in fake_natal_specs()
+        for feature in spec.features
+    ]
 
 
 def _evaluate_one_era(
@@ -155,47 +178,25 @@ def _evaluate_one_era(
 ) -> list[pd.DataFrame]:
     results: list[pd.DataFrame] = []
 
-    registered = evaluate_categorical_family(
-        df,
-        spec.features,
-        spec.target,
-        family_name=spec.family_name,
-        min_n=min_n,
+    jobs = (
+        ("registered_real_natal", spec.features, spec.family_name),
+        ("shift_null", _shift_features_for(spec), f"{spec.family_name}__shift_null"),
+        ("fake_natal", _fake_features_for(spec), f"{spec.family_name}__fake_natal"),
     )
-    if not registered.empty:
-        registered.insert(0, "hypothesis_id", spec.hypothesis_id)
-        registered.insert(1, "era", era_name)
-        registered.insert(2, "test_kind", "registered_real_natal")
-        results.append(registered)
-
-    shifted_df, shifted_features = _add_shift_nulls(df, real_features=spec.features)
-    shifted = evaluate_categorical_family(
-        shifted_df,
-        shifted_features,
-        spec.target,
-        family_name=f"{spec.family_name}__shift_null",
-        min_n=min_n,
-    )
-    if not shifted.empty:
-        shifted.insert(0, "hypothesis_id", spec.hypothesis_id)
-        shifted.insert(1, "era", era_name)
-        shifted.insert(2, "test_kind", "shift_null")
-        results.append(shifted)
-
-    fake_df, fake_features = _add_fake_natal_features(df, real_features=spec.features)
-    fake = evaluate_categorical_family(
-        fake_df,
-        fake_features,
-        spec.target,
-        family_name=f"{spec.family_name}__fake_natal",
-        min_n=min_n,
-    )
-    if not fake.empty:
-        fake.insert(0, "hypothesis_id", spec.hypothesis_id)
-        fake.insert(1, "era", era_name)
-        fake.insert(2, "test_kind", "fake_natal")
-        results.append(fake)
-
+    for test_kind, features, family_name in jobs:
+        r = evaluate_categorical_family(
+            df,
+            features,
+            spec.target,
+            family_name=family_name,
+            min_n=min_n,
+        )
+        if r.empty:
+            continue
+        r.insert(0, "hypothesis_id", spec.hypothesis_id)
+        r.insert(1, "era", era_name)
+        r.insert(2, "test_kind", test_kind)
+        results.append(r)
     return results
 
 
@@ -225,23 +226,24 @@ def run_historical_exploration(
     manifest: DataManifest | None = None,
     min_n: int = 100,
 ) -> dict[str, pd.DataFrame]:
-    """Run the preregistered historical exploration.
-
-    Important: every result through 2026-08-14 is exploratory. This function
-    intentionally has no holdout/acceptance path.
-    """
+    """Run preregistered historical exploration; there is no holdout path."""
     out_dir.mkdir(parents=True, exist_ok=True)
     base = raw.copy()
     if "symbol" not in base.columns:
         base["symbol"] = "INDEX_000001"
+
     dataset = add_sse_natal_transit_features(base)
     dataset = add_forward_labels(dataset)
     dataset.to_csv(out_dir / "dataset_natal_transit.csv", index=False)
 
+    registered_features = _all_registered_features()
+    analysis_frame = _add_shift_nulls_once(dataset, real_features=registered_features)
+    analysis_frame = _add_fake_natal_features_once(analysis_frame, real_features=registered_features)
+
     parts: list[pd.DataFrame] = []
     for spec in EXPERIMENTS:
         for era_name, start, end in ERAS:
-            era = _slice_dates(dataset, start, end)
+            era = _slice_dates(analysis_frame, start, end)
             parts.extend(_evaluate_one_era(era, spec=spec, era_name=era_name, min_n=min_n))
 
     screen = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
