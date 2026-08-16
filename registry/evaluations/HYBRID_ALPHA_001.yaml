@@ -1,0 +1,63 @@
+hypothesis_id: HYBRID_ALPHA_001
+evaluated_at: '2026-08-16'
+evidence_status: EXPLORATORY_WALK_FORWARD_OOS_OVER_PRE_EXISTING_HISTORY
+workflow_run_id: 31950483358
+commit_evaluated: cc05302dccf9a94676f1b97ffe1430ce4156ad63
+artifact:
+  id: 9264515028
+  sha256: 3f621382f56f6538b37d7490ad8d47eb697a97cee87baf4a3f4cf58e38eb47d2
+data:
+  symbol: '000001'
+  provider: sina
+  rows_raw: 8704
+  common_eligible_rows: 8683
+  oos_rows: 4035
+  first_date: '1990-12-19'
+  last_date: '2026-08-14'
+  canonical_sha256: 697af81a200060d42b04fa7a79b92fb8287e709ae10baf0825ae301fb4af5aa1
+results:
+  cycle:
+    decision: HISTORICAL_GATE_PASS
+    promote_to_future_only: true
+    logloss_improvement: 0.005151745598592217
+    brier_improvement: 0.0024784566974002664
+    auc_delta: 0.017839766620967867
+    windows_logloss_improved: 3
+    windows_brier_improved: 3
+    bootstrap_logloss_probability_positive: 1.0
+    bootstrap_brier_probability_positive: 1.0
+    bootstrap_logloss_p_holm: 0.0
+    bootstrap_brier_p_holm: 0.0
+  ziping:
+    decision: HISTORICAL_GATE_PASS
+    promote_to_future_only: true
+    logloss_improvement: 0.004498405106149073
+    brier_improvement: 0.0021637844480086876
+    auc_delta: 0.013691418868875926
+    windows_logloss_improved: 3
+    windows_brier_improved: 3
+    bootstrap_logloss_probability_positive: 1.0
+    bootstrap_brier_probability_positive: 1.0
+    bootstrap_logloss_p_holm: 0.0
+    bootstrap_brier_p_holm: 0.0
+  qimen:
+    decision: HISTORICAL_GATE_FAIL
+    promote_to_future_only: false
+    logloss_improvement: 0.002602207262088263
+    brier_improvement: 0.00123601406607865
+    auc_delta: 0.0024078046455191515
+    windows_logloss_improved: 2
+    windows_brier_improved: 2
+  all_symbolic:
+    decision: HISTORICAL_GATE_FAIL
+    promote_to_future_only: false
+    logloss_improvement: 0.003953483979907801
+    brier_improvement: 0.001920566109009758
+    auc_delta: 0.017442364361241025
+    windows_logloss_improved: 2
+    windows_brier_improved: 2
+future_rules:
+  - only cycle and ziping may be promoted from this run
+  - no feature deletion or feature additions under the same historical hypothesis id
+  - no nonlinear rescue model under HYBRID_ALPHA_001
+  - passing history is model-selection evidence, not confirmatory evidence
