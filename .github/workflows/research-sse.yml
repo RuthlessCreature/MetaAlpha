@@ -21,6 +21,7 @@ jobs:
           python-version: '3.11'
       - name: Install research dependencies
         run: pip install -e '.[data]'
+      # Attempt 2: data adapter now has frozen Eastmoney/Sina/Tencent fallbacks.
       - name: Fetch SSE data and run preregistered experiment
         run: >-
           metaalpha-ziping-sse
@@ -30,6 +31,9 @@ jobs:
           --end 20260816
           --out reports/sse_ziping_first
           --min-n 100
+      - name: Show data provenance
+        if: success()
+        run: cat reports/sse_ziping_first/data_manifest.json
       - name: Upload research artifact
         if: always()
         uses: actions/upload-artifact@v4
