@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 from itertools import combinations
 
-import numpy as np
 import pandas as pd
 
 from .data_sources import DataManifest, fetch_akshare_index
@@ -20,24 +19,64 @@ def compare_provider_frames(
     *,
     left_name: str,
     right_name: str,
-) -> tuple[dict[str, object], pd.DataFrame]:
+) -> tuple[dict[str, object], pd.DataFrame, pd.DataFrame]:
+    """Compare two providers on exactly the same date intervals.
+
+    Returns are calculated *after* the inner date join. This is critical when
+    one provider is missing sessions: calculating pct_change before alignment
+    would compare a one-session return with a multi-session return and invent a
+    false provider disagreement.
+    """
     cols = ["date", "open", "high", "low", "close"]
-    a = left[cols].copy().sort_values("date")
-    b = right[cols].copy().sort_values("date")
-    a["ret1"] = a["close"].pct_change()
-    b["ret1"] = b["close"].pct_change()
-    m = a.merge(b, on="date", how="inner", suffixes=("_left", "_right"))
+    a = left[cols].copy().sort_values("date").drop_duplicates("date", keep="last")
+    b = right[cols].copy().sort_values("date").drop_duplicates("date", keep="last")
+
+    left_dates = set(pd.to_datetime(a["date"]).dt.normalize())
+    right_dates = set(pd.to_datetime(b["date"]).dt.normalize())
+    left_only_dates = sorted(left_dates - right_dates)
+    right_only_dates = sorted(right_dates - left_dates)
+
+    missing_rows: list[dict[str, object]] = []
+    for value in left_only_dates:
+        missing_rows.append(
+            {
+                "left_provider": left_name,
+                "right_provider": right_name,
+                "date": value.strftime("%Y-%m-%d"),
+                "present_in": left_name,
+                "missing_from": right_name,
+            }
+        )
+    for value in right_only_dates:
+        missing_rows.append(
+            {
+                "left_provider": left_name,
+                "right_provider": right_name,
+                "date": value.strftime("%Y-%m-%d"),
+                "present_in": right_name,
+                "missing_from": left_name,
+            }
+        )
+    missing_df = pd.DataFrame(missing_rows)
+
+    m = a.merge(b, on="date", how="inner", suffixes=("_left", "_right")).sort_values("date").reset_index(drop=True)
     if m.empty:
         raise ValueError(f"no overlapping dates between {left_name} and {right_name}")
 
+    # Compute returns only on the aligned common-date timeline.
+    m["ret1_left"] = m["close_left"].pct_change()
+    m["ret1_right"] = m["close_right"].pct_change()
     m["close_abs_diff"] = (m["close_left"] - m["close_right"]).abs()
     m["ret1_abs_diff"] = (m["ret1_left"] - m["ret1_right"]).abs()
+
     metrics = {
         "left_provider": left_name,
         "right_provider": right_name,
         "left_rows": int(len(left)),
         "right_rows": int(len(right)),
         "common_dates": int(len(m)),
+        "left_only_dates": int(len(left_only_dates)),
+        "right_only_dates": int(len(right_only_dates)),
         "first_common_date": pd.to_datetime(m["date"]).min().strftime("%Y-%m-%d"),
         "last_common_date": pd.to_datetime(m["date"]).max().strftime("%Y-%m-%d"),
         "mean_close_abs_diff": float(m["close_abs_diff"].mean()),
@@ -52,7 +91,7 @@ def compare_provider_frames(
     top = m.nlargest(50, "ret1_abs_diff").copy()
     top.insert(0, "left_provider", left_name)
     top.insert(1, "right_provider", right_name)
-    return metrics, top
+    return metrics, top, missing_df
 
 
 def run_reconciliation(
@@ -86,8 +125,9 @@ def run_reconciliation(
 
     metric_rows: list[dict[str, object]] = []
     disagreements: list[pd.DataFrame] = []
+    missing_dates: list[pd.DataFrame] = []
     for left_name, right_name in combinations(frames, 2):
-        metrics, top = compare_provider_frames(
+        metrics, top, missing = compare_provider_frames(
             frames[left_name],
             frames[right_name],
             left_name=left_name,
@@ -95,15 +135,20 @@ def run_reconciliation(
         )
         metric_rows.append(metrics)
         disagreements.append(top)
+        if not missing.empty:
+            missing_dates.append(missing)
 
     metrics_df = pd.DataFrame(metric_rows)
     top_df = pd.concat(disagreements, ignore_index=True) if disagreements else pd.DataFrame()
+    missing_df = pd.concat(missing_dates, ignore_index=True) if missing_dates else pd.DataFrame(
+        columns=["left_provider", "right_provider", "date", "present_in", "missing_from"]
+    )
+
     metrics_df.to_csv(out_dir / "pairwise_metrics.csv", index=False)
     top_df.to_csv(out_dir / "top_return_disagreements.csv", index=False)
+    missing_df.to_csv(out_dir / "missing_dates.csv", index=False)
 
-    manifest_payload = {
-        name: manifest.to_dict() for name, manifest in manifests.items()
-    }
+    manifest_payload = {name: manifest.to_dict() for name, manifest in manifests.items()}
     (out_dir / "provider_manifests.json").write_text(
         json.dumps(manifest_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -118,6 +163,8 @@ def run_reconciliation(
         "",
         "This is a data-quality report. It does not choose a provider based on which one improves a research result.",
         "",
+        "Returns are computed only after providers are aligned to their common trading-date timeline. Missing sessions are reported separately and never treated as price disagreement.",
+        "",
         "## Successful providers",
         "",
     ]
@@ -128,6 +175,15 @@ def run_reconciliation(
         for name, err in errors.items():
             lines.append(f"- `{name}`: {err}")
     lines.extend(["", "## Pairwise metrics", "", metrics_df.to_markdown(index=False), ""])
+    if not missing_df.empty:
+        lines.extend(
+            [
+                "## Missing-date counts",
+                "",
+                f"Total pairwise provider-date omissions recorded: {len(missing_df)}. See `missing_dates.csv` for exact dates.",
+                "",
+            ]
+        )
     lines.extend(
         [
             "## Canonicalization rule",
@@ -143,6 +199,7 @@ def run_reconciliation(
         "errors": errors,
         "metrics": metrics_df,
         "top_disagreements": top_df,
+        "missing_dates": missing_df,
     }
 
 
@@ -161,6 +218,7 @@ def main() -> None:
     )
     print(f"successful_providers={list(result['frames'])}")
     print(f"pairwise_comparisons={len(result['metrics'])}")
+    print(f"missing_date_rows={len(result['missing_dates'])}")
     print(f"report={args.out / 'SUMMARY.md'}")
 
 
