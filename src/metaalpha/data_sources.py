@@ -24,6 +24,13 @@ AKSHARE_INDEX_COLUMN_MAP = {
     "换手率": "turnover_pct",
 }
 
+PROVIDER_ORDER = (
+    "eastmoney_direct",
+    "sina",
+    "tencent",
+    "eastmoney_mapped",
+)
+
 
 @dataclass(frozen=True)
 class DataManifest:
@@ -47,7 +54,6 @@ class DataManifest:
 
 
 def canonical_frame_sha256(df: pd.DataFrame) -> str:
-    """Hash a normalized market frame in a stable, machine-reproducible form."""
     cols = [c for c in ("symbol", "date", "open", "high", "low", "close", "volume", "amount") if c in df.columns]
     x = df[cols].copy()
     if "date" in x.columns:
@@ -63,13 +69,6 @@ def normalize_akshare_index_frame(
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> pd.DataFrame:
-    """Normalize supported AKShare index-history outputs to the MetaAlpha contract.
-
-    Supported providers expose either Chinese ``日期/开盘/...`` columns or
-    already-normalized English ``date/open/...`` columns. Required schema and
-    OHLC invariants are checked explicitly so provider fallback cannot silently
-    mutate the research dataset contract.
-    """
     if raw is None or raw.empty:
         raise ValueError("AKShare returned an empty index frame")
 
@@ -90,16 +89,8 @@ def normalize_akshare_index_frame(
     numeric_cols = [
         c
         for c in (
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "amount",
-            "amplitude_pct",
-            "change_pct",
-            "change",
-            "turnover_pct",
+            "open", "high", "low", "close", "volume", "amount",
+            "amplitude_pct", "change_pct", "change", "turnover_pct",
         )
         if c in out.columns
     ]
@@ -119,18 +110,8 @@ def normalize_akshare_index_frame(
     preferred = [
         c
         for c in (
-            "symbol",
-            "date",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "amount",
-            "amplitude_pct",
-            "change_pct",
-            "change",
-            "turnover_pct",
+            "symbol", "date", "open", "high", "low", "close", "volume", "amount",
+            "amplitude_pct", "change_pct", "change", "turnover_pct",
         )
         if c in out.columns
     ]
@@ -157,38 +138,10 @@ def _retry_call(
     raise RuntimeError(f"provider failed after {retries} attempts") from last_exc
 
 
-def fetch_akshare_index(
-    *,
-    symbol: str = "000001",
-    start_date: str = "19901219",
-    end_date: str = "22220101",
-    retries: int = 2,
-    retry_sleep_seconds: float = 1.5,
-) -> tuple[pd.DataFrame, DataManifest]:
-    """Fetch one A-share index through a deterministic AKShare provider chain.
-
-    Provider order is frozen for this adapter version:
-
-    1. ``stock_zh_index_daily_em`` — Eastmoney, direct market-qualified symbol;
-    2. ``stock_zh_index_daily`` — Sina;
-    3. ``stock_zh_index_daily_tx`` — Tencent;
-    4. ``index_zh_a_hist`` — Eastmoney code-map interface, last resort.
-
-    The first provider that returns a valid normalized frame wins. The actual
-    provider is written to the manifest. This avoids making the statistical
-    experiment depend on one brittle upstream discovery endpoint.
-    """
-    if retries < 1:
-        raise ValueError("retries must be >= 1")
-
-    try:
-        import akshare as ak  # type: ignore
-    except ImportError as exc:  # pragma: no cover - environment dependent
-        raise RuntimeError("AKShare is not installed; use `pip install -e '.[data]'`") from exc
-
+def _provider_definitions(ak, *, symbol: str, start_date: str, end_date: str):
     market_symbol = f"sh{symbol}"
-    providers: list[tuple[str, str, Callable[[], pd.DataFrame]]] = [
-        (
+    return {
+        "eastmoney_direct": (
             "AKShare / Eastmoney direct index history",
             "ak.stock_zh_index_daily_em",
             lambda: ak.stock_zh_index_daily_em(
@@ -197,17 +150,17 @@ def fetch_akshare_index(
                 end_date=end_date,
             ),
         ),
-        (
+        "sina": (
             "AKShare / Sina index history",
             "ak.stock_zh_index_daily",
             lambda: ak.stock_zh_index_daily(symbol=market_symbol),
         ),
-        (
+        "tencent": (
             "AKShare / Tencent index history",
             "ak.stock_zh_index_daily_tx",
             lambda: ak.stock_zh_index_daily_tx(symbol=market_symbol),
         ),
-        (
+        "eastmoney_mapped": (
             "AKShare / Eastmoney mapped index history",
             "ak.index_zh_a_hist",
             lambda: ak.index_zh_a_hist(
@@ -217,16 +170,42 @@ def fetch_akshare_index(
                 end_date=end_date,
             ),
         ),
-    ]
+    }
+
+
+def fetch_akshare_index(
+    *,
+    symbol: str = "000001",
+    start_date: str = "19901219",
+    end_date: str = "22220101",
+    provider: str = "auto",
+    retries: int = 2,
+    retry_sleep_seconds: float = 1.5,
+) -> tuple[pd.DataFrame, DataManifest]:
+    """Fetch one A-share index with either a pinned provider or frozen fallback chain.
+
+    ``provider='auto'`` uses ``PROVIDER_ORDER`` and is suitable for availability
+    but not for strict cross-run numerical comparison. Confirmatory research must
+    pin a provider explicitly and record its manifest/hash.
+    """
+    if retries < 1:
+        raise ValueError("retries must be >= 1")
+    if provider != "auto" and provider not in PROVIDER_ORDER:
+        raise ValueError(f"unknown provider {provider!r}; expected auto or one of {PROVIDER_ORDER}")
+
+    try:
+        import akshare as ak  # type: ignore
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("AKShare is not installed; use `pip install -e '.[data]'`") from exc
+
+    providers = _provider_definitions(ak, symbol=symbol, start_date=start_date, end_date=end_date)
+    selected = PROVIDER_ORDER if provider == "auto" else (provider,)
 
     errors: list[str] = []
-    for source, method, call in providers:
+    for provider_key in selected:
+        source, method, call = providers[provider_key]
         try:
-            raw = _retry_call(
-                call,
-                retries=retries,
-                retry_sleep_seconds=retry_sleep_seconds,
-            )
+            raw = _retry_call(call, retries=retries, retry_sleep_seconds=retry_sleep_seconds)
             frame = normalize_akshare_index_frame(
                 raw,
                 symbol=symbol,
@@ -234,7 +213,7 @@ def fetch_akshare_index(
                 end_date=end_date,
             )
         except Exception as exc:  # pragma: no cover - upstream network behavior
-            errors.append(f"{method}: {type(exc).__name__}: {exc}")
+            errors.append(f"{provider_key}/{method}: {type(exc).__name__}: {exc}")
             continue
 
         manifest = DataManifest(
@@ -253,4 +232,6 @@ def fetch_akshare_index(
         return frame, manifest
 
     detail = " | ".join(errors)
-    raise RuntimeError(f"all AKShare index providers failed: {detail}")
+    if provider == "auto":
+        raise RuntimeError(f"all AKShare index providers failed: {detail}")
+    raise RuntimeError(f"pinned provider {provider!r} failed; no fallback allowed: {detail}")
