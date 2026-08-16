@@ -12,10 +12,15 @@ def add_forward_labels(
     horizons: tuple[int, ...] = (1, 5, 20),
     extreme_loss_threshold: float = -0.03,
 ) -> pd.DataFrame:
-    """Create leakage-safe forward labels from close prices.
+    """Create strictly future-only labels from close prices.
 
-    Rows must already be sorted chronologically within each symbol. The
-    function sorts defensively when `group_col` and `date` are available.
+    For a row at session ``t``:
+
+    - ``ret_fwd_h`` uses ``C[t+h] / C[t] - 1``;
+    - ``vol_fwd_h`` uses exactly the one-session returns at ``t+1..t+h``.
+
+    The implementation sorts defensively within symbol before shifting. No
+    present/past return is permitted inside a forward-volatility target.
     """
     out = df.copy()
     sort_cols = [c for c in (group_col, "date") if c and c in out.columns]
@@ -42,15 +47,14 @@ def add_forward_labels(
             np.nan,
         )
 
-    # Future realized volatility uses only future one-session returns t+1..t+h.
+    # At t, rolling(h) evaluated at t+h contains ret_1[t+1..t+h].
+    # Shifting that result backward by h places the strictly future window on t.
     for h in (5, 20):
         if group_col and group_col in out.columns:
             out[f"vol_fwd_{h}"] = out.groupby(group_col, sort=False)["ret_1"].transform(
-                lambda s: s.shift(-h).rolling(h, min_periods=h).std().shift(h - 1)
+                lambda s: s.rolling(h, min_periods=h).std().shift(-h)
             )
         else:
-            out[f"vol_fwd_{h}"] = (
-                out["ret_1"].shift(-h).rolling(h, min_periods=h).std().shift(h - 1)
-            )
+            out[f"vol_fwd_{h}"] = out["ret_1"].rolling(h, min_periods=h).std().shift(-h)
 
     return out
