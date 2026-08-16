@@ -1,4 +1,4 @@
-name: SSE Ziping First Experiment
+name: SSE Ziping Corrected v1 Reanalysis
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   research:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,24 +21,26 @@ jobs:
           python-version: '3.11'
       - name: Install research dependencies
         run: pip install -e '.[data]'
-      # Attempt 2: data adapter now has frozen Eastmoney/Sina/Tencent fallbacks.
-      - name: Fetch SSE data and run preregistered experiment
+      - name: Run corrected Ziping v1 reanalysis on pinned Sina data
         run: >-
           metaalpha-ziping-sse
           --fetch-akshare
+          --provider sina
           --symbol 000001
           --start 19901219
-          --end 20260816
-          --out reports/sse_ziping_first
+          --end 20260814
+          --out reports/sse_ziping_corrected_v1
           --min-n 100
-      - name: Show data provenance
+      - name: Show correction metadata and provenance
         if: success()
-        run: cat reports/sse_ziping_first/data_manifest.json
-      - name: Upload research artifact
+        run: |
+          cat reports/sse_ziping_corrected_v1/run_metadata.json
+          cat reports/sse_ziping_corrected_v1/data_manifest.json
+      - name: Upload corrected research artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sse-ziping-first-${{ github.sha }}
-          path: reports/sse_ziping_first
+          name: sse-ziping-corrected-v1-${{ github.sha }}
+          path: reports/sse_ziping_corrected_v1
           if-no-files-found: warn
           retention-days: 30
