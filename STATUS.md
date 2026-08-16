@@ -1,6 +1,6 @@
 # MetaAlpha Research Status
 
-Snapshot date: **2026-08-16**
+Snapshot date: **2026-08-17**
 
 MetaAlpha tests deterministic Chinese symbolic-time systems as candidate market features under explicit falsification rules. This file is the current high-level evidence ledger; detailed protocols and audit artifacts remain in `registry/`, `reports/`, and `forward/`.
 
@@ -9,7 +9,7 @@ MetaAlpha tests deterministic Chinese symbolic-time systems as candidate market 
 | Branch / experiment | Evidence class | Current decision | Interpretation |
 |---|---|---|---|
 | Ziping v1-v4 standalone historical tests | historical exploration | mostly FAIL / no promotion | Increasing structural detail did not create stable next-session return evidence |
-| `ZIPING_FWD_001` | prospective future-only | ACTIVE | Tests the frozen historical `偏财` candidate from 2026-08-17 onward |
+| `ZIPING_FWD_001` | prospective future-only | ACTIVE / secondary | Specific-rule follow-up; not an independent replication of the primary family |
 | `GANZHI_VOL_001` | preregistered historical falsification | FAIL | Late-era volatility associations did not survive shifted/non-overlap/stability gates |
 | `QIMEN_MARKET_001` | preregistered historical exploration | FAIL | No Qimen block passed the frozen market gate |
 | `HYBRID_ALPHA_001 / cycle` | historical walk-forward OOS on selection market | PASS | Small incremental Shanghai Composite probability information historically |
@@ -18,8 +18,10 @@ MetaAlpha tests deterministic Chinese symbolic-time systems as candidate market 
 | `HYBRID_ALPHA_001 / all_symbolic` | historical walk-forward OOS | FAIL | More symbolic complexity did not improve temporal stability |
 | `HYBRID_REPL_001 / cycle` | external-index historical replication | **FAIL (0/4 indices)** | Historical Shanghai cycle result did not generalize across four new indices |
 | `HYBRID_REPL_001 / ziping` | external-index historical replication | **FAIL (0/4 indices)** | Historical Shanghai Ziping result did not generalize across four new indices |
-| `HYBRID_FWD_001` | prospective future-only | ACTIVE | Frozen Shanghai baseline vs cycle vs ziping; first 500 eligible sessions form immutable gate sample |
-| `META_FWD_001` | prospective future-only branch tournament | ACTIVE | baseline vs cycle / ziping / qimen / meihua, plus deterministic hash-six-line negative control |
+| `HYBRID_FWD_001` | prospective future-only | ACTIVE / shadow | Overlapping cycle/ziping shadow check; must not be counted as an independent replication |
+| `META_FWD_001` | prospective future-only branch tournament | **ACTIVE / PRIMARY CONFIRMATORY** | baseline vs cycle / ziping / qimen / meihua, plus deterministic hash-six-line negative control |
+
+The prospective evidence hierarchy is frozen in `registry/prospective_evidence_hierarchy.yaml`. A favorable secondary result cannot rescue a failure of the primary `META_FWD_001` family.
 
 ## 2. Strongest current falsification result
 
@@ -81,7 +83,7 @@ First-record probabilities:
 
 The first 500 eligible settled sessions are the one-time gate sample. The gate includes four chronological subwindows, effect-size thresholds, 20-session block bootstrap, and Holm family correction.
 
-No result before that gate is confirmatory.
+This experiment is now treated as an overlapping shadow check, not an independent replication of `META_FWD_001`.
 
 ## 5. Prospective test B — `META_FWD_001`
 
@@ -103,6 +105,7 @@ No new candidate may be added to this family after the first eligible record.
 ### First immutable 2026-08-17 tournament record
 
 Generated: **2026-08-16 22:15:40 Asia/Shanghai**  
+Committed by GitHub Actions: **2026-08-16 22:16:45 Asia/Shanghai**  
 Training data last date: **2026-08-14**  
 Eligible before anchor: **yes**
 
@@ -191,7 +194,57 @@ The frozen model uses only:
 - mutual hexagram key
 - body/use five-element relation
 
-## 7. Current stop rules
+## 7. `META_FWD_001` reproducibility freeze
+
+The forward family is now mechanically frozen at four layers.
+
+### Predictor source
+
+The predictive dependency closure is compared byte-for-byte against registration commit:
+
+`12ddbcc66b0f1b3679c3f87ab1598cd538fdaa47`
+
+Predictive feature engines, market preprocessing and model code may not drift under this family ID. Audit/reporting/settlement code may be repaired only if it does not alter the predictor closure.
+
+### Runtime
+
+The first eligible run is frozen to:
+
+- CPython **3.11.15**;
+- NumPy **2.4.6**;
+- Pandas **3.0.5**;
+- SciPy **1.17.1**;
+- scikit-learn **1.9.0**;
+- statsmodels **0.14.6**;
+- lunar_python **1.4.8**;
+- AKShare **1.18.84**;
+- exact transitive versions in `requirements/meta-fwd-001.lock.txt`.
+
+The lockfile itself is bound to SHA-256:
+
+`f12b6780df99f96a7904d435c42344f5b809852dbff043d568306e7721ee2a8b`
+
+### Prediction ledger
+
+`forward/META_FWD_001/predictions/` is append-only. Every eligible record must:
+
+- have exactly one exact-path Git commit touch;
+- be committed before 09:25 on its target date;
+- use training data strictly before the target date;
+- match the frozen candidate/model/feature sets;
+- pass independently recomputed eligibility checks.
+
+The 2026-08-17 Sunday bootstrap is the sole grandfathered prior-civil-day record. After it, each prediction must be generated on the same Shanghai civil date as its target, preventing bulk early precommitment from bypassing the expanding-daily-refit rule.
+
+### Realized-outcome ledger
+
+`forward/META_FWD_001/realized/` is also append-only. A same-day result cannot be first locked before **15:30 Asia/Shanghai**. Each locked outcome stores previous trading close, target close, return, direction, source manifest and the SHA-256 of the matching prediction file.
+
+Later vendor revisions cannot silently rewrite a previously locked confirmatory outcome.
+
+Detailed reproducibility policy: `registry/meta_fwd_001_reproducibility.yaml`.
+
+## 8. Current stop rules
 
 The following are prohibited under existing hypothesis IDs:
 
@@ -201,16 +254,36 @@ The following are prohibited under existing hypothesis IDs:
 - weakening temporal-stability or multiple-testing gates;
 - reinterpreting a failed branch as successful by selecting a convenient era;
 - adding new `META_FWD_001` candidates after its first record;
+- changing predictor-source bytes under `META_FWD_001`;
+- changing the first-run Python/package environment under `META_FWD_001`;
+- bulk-generating future target dates instead of same-day expanding refits;
+- overwriting an existing prediction or realized outcome;
+- counting `HYBRID_FWD_001`, `ZIPING_FWD_001` and `META_FWD_001` as independent replications;
 - using the negative-control result as a tradable model.
 
-## 8. What matters next
+Any genuinely new predictive formulation now requires a **new hypothesis/family ID before its first inspected outcome**.
 
-The project has reached the point where **more historical searching has sharply diminishing evidentiary value**.
+## 9. Engineering freeze checkpoint
 
-The highest-value evidence now comes from immutable future records:
+As of the 2026-08-17 pre-market checkpoint, CI has passed all of the following on the frozen runtime:
 
-- `ZIPING_FWD_001`
-- `HYBRID_FWD_001`
-- `META_FWD_001`
+- predictor-source byte freeze;
+- runtime/package freeze;
+- full pytest suite, including anti-leakage, immutable-ledger and daily-refit tests;
+- immutable prediction-ledger audit;
+- immutable realized-ledger audit.
 
-Historical work should be limited to engineering QC, independent source validation, and explicitly new hypotheses that receive new IDs before their outcomes are inspected.
+The experiment mechanics are therefore **frozen for evidence collection**. Further work under `META_FWD_001` should be limited to non-predictive operational repairs required to preserve the registered protocol. No such repair may alter already committed probabilities, candidate definitions, gate thresholds or locked outcomes.
+
+## 10. What matters next
+
+The project has reached the point where more historical searching or predictor engineering would reduce rather than increase evidentiary credibility.
+
+The next informative observations are external:
+
+1. the 08:10 scheduled job verifies the frozen environment/source and refuses to overwrite the already committed 2026-08-17 prediction;
+2. the market session supplies the first unseen outcome;
+3. after 15:30, and operationally at the 16:40 scheduled settlement, the first realized outcome can be locked to the immutable ledger;
+4. the process repeats under the same-day expanding-refit rule until the first 500 eligible settled sessions are complete.
+
+Daily leaders remain descriptive only. The first-day result, whether correct or incorrect, cannot promote or kill a branch by itself.
