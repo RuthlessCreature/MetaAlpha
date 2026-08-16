@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from math import log
-
 import numpy as np
 import pandas as pd
 
@@ -42,27 +40,30 @@ def _trailing_return(close: pd.Series, sessions: int) -> pd.Series:
     return close.shift(1) / close.shift(sessions + 1) - 1.0
 
 
-def add_market_baseline_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Build the frozen HYBRID_ALPHA_001 market baseline without lookahead.
-
-    All market predictors at row t use only OHLCV observations through t-1.
-    The only row-t market values emitted are audit targets, never predictors.
-    """
+def _normalize_market_history(df: pd.DataFrame) -> pd.DataFrame:
     required = {"date", "open", "high", "low", "close", "volume"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"market baseline requires columns: {sorted(missing)}")
-
     out = df.copy()
     out["date"] = pd.to_datetime(out["date"], errors="raise").dt.normalize()
     out = out.sort_values("date").reset_index(drop=True)
-
     for c in ("open", "high", "low", "close", "volume"):
         out[c] = pd.to_numeric(out[c], errors="raise")
     if (out[["open", "high", "low", "close"]] <= 0).any().any():
         raise ValueError("non-positive OHLC value")
     if (out["volume"] <= 0).any():
         raise ValueError("non-positive volume value")
+    return out
+
+
+def add_market_baseline_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Build the frozen HYBRID_ALPHA_001 market baseline without lookahead.
+
+    All market predictors at row t use only OHLCV observations through t-1.
+    The only row-t market values emitted are audit targets, never predictors.
+    """
+    out = _normalize_market_history(df)
 
     close = out["close"].astype(float)
     open_ = out["open"].astype(float)
@@ -111,6 +112,53 @@ def add_market_baseline_features(df: pd.DataFrame) -> pd.DataFrame:
     out["gregorian_month"] = out["date"].dt.month.astype(int)
 
     return out
+
+
+def premarket_market_feature_row(history: pd.DataFrame, target_date: str | pd.Timestamp) -> pd.DataFrame:
+    """Construct the frozen 09:25 predictor row using only history through t-1.
+
+    Unlike the historical batch builder, this function never accepts or invents
+    current-session OHLCV. It is therefore the canonical forward-prediction path.
+    """
+    h = _normalize_market_history(history)
+    target = pd.Timestamp(target_date).normalize()
+    if h.empty:
+        raise ValueError("empty market history")
+    if h["date"].iloc[-1] >= target:
+        raise ValueError("premarket history must end strictly before target_date")
+    if len(h) < 22:
+        raise ValueError("at least 22 prior market sessions are required")
+
+    close = h["close"].astype(float)
+    open_ = h["open"].astype(float)
+    high = h["high"].astype(float)
+    low = h["low"].astype(float)
+    volume = h["volume"].astype(float)
+    ret = close.pct_change()
+
+    row: dict[str, object] = {"date": target}
+    for sessions in (1, 2, 5, 10, 20):
+        row[f"ret_lag_{sessions}"] = float(close.iloc[-1] / close.iloc[-1 - sessions] - 1.0)
+    row["abs_ret_lag_1"] = float(abs(ret.iloc[-1]))
+    row["vol_lag_5"] = float(ret.iloc[-5:].std(ddof=1))
+    row["vol_lag_20"] = float(ret.iloc[-20:].std(ddof=1))
+    row["overnight_gap_lag_1"] = float(open_.iloc[-1] / close.iloc[-2] - 1.0)
+    row["intraday_range_lag_1"] = float((high.iloc[-1] - low.iloc[-1]) / close.iloc[-1])
+    row["close_ma5_distance_lag_1"] = float(close.iloc[-1] / close.iloc[-5:].mean() - 1.0)
+    row["close_ma20_distance_lag_1"] = float(close.iloc[-1] / close.iloc[-20:].mean() - 1.0)
+    row["drawdown_20_lag_1"] = float(close.iloc[-1] / close.iloc[-20:].max() - 1.0)
+
+    log_volume = np.log(volume)
+    row["volume_log_change_lag_1"] = float(log_volume.iloc[-1] - log_volume.iloc[-2])
+    last20 = log_volume.iloc[-20:]
+    row["volume_z20_lag_1"] = float((last20.iloc[-1] - last20.mean()) / last20.std(ddof=1))
+
+    normalized_time = float((target - _EPOCH).days / _TIME_SCALE_DAYS)
+    row["normalized_time"] = normalized_time
+    row["normalized_time_squared"] = normalized_time**2
+    row["weekday"] = int(target.weekday())
+    row["gregorian_month"] = int(target.month)
+    return pd.DataFrame([row])
 
 
 def eligible_hybrid_rows(df: pd.DataFrame, extra_features: list[str] | None = None) -> pd.Series:
