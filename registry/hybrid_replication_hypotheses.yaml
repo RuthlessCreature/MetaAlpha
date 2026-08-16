@@ -27,6 +27,12 @@ data:
   historical_end: '20260814'
   minimum_training_rows: 500
   row_eligibility: 'common complete rows for baseline + cycle + ziping only; qimen/all_symbolic are excluded and cannot remove rows'
+  volume_qc:
+    rule: 'non-positive upstream volume placeholders are mapped to missing for feature construction only'
+    preserve_price_rows_and_targets: true
+    impute_volume_features: false
+    exclusion: 'common complete-row policy excludes sessions whose frozen volume predictors are unavailable'
+    rationale: 'do not delete price sessions or create multi-session close-to-close targets'
 prediction:
   anchor: '09:25 Asia/Shanghai'
   target: same_session_close_to_close_direction
@@ -68,6 +74,11 @@ replication_gate:
   total_indices: 4
   evaluated_separately_for: [cycle, ziping]
   no_best_index_selection: true
+attempt_history:
+  - attempt: 1
+    workflow_run_id: 31951316355
+    status: INVALID_FOR_REPLICATION_DECISION_DATA_QC_FAILURE
+    statistical_partial_results_must_not_be_used: true
 interpretation:
   - PASS means cross-index historical replication of the frozen predictive algorithm, not metaphysical causality
   - FAIL cannot be rescued by dropping an index, changing the feature set, changing the model or changing the gate under this hypothesis id
