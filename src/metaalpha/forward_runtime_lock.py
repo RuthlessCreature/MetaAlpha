@@ -11,6 +11,7 @@ import sys
 REFERENCE_COMMIT = "12ddbcc66b0f1b3679c3f87ab1598cd538fdaa47"
 PYTHON_VERSION = (3, 11, 15)
 LOCKFILE = Path("requirements/meta-fwd-001.lock.txt")
+LOCKFILE_SHA256 = "f12b6780df99f96a7904d435c42344f5b809852dbff043d568306e7721ee2a8b"
 
 # Dependency closure of the first META_FWD_001 signal path. These files existed
 # at registration and are frozen byte-for-byte to REFERENCE_COMMIT. New audit,
@@ -105,7 +106,12 @@ def runtime_freeze_report(repo_root: Path) -> dict[str, object]:
     if not lock_path.exists():
         failures["lockfile"] = f"missing {LOCKFILE.as_posix()}"
         expected = {}
+        actual_lock_hash = None
     else:
+        raw_lock = lock_path.read_bytes()
+        actual_lock_hash = hashlib.sha256(raw_lock).hexdigest()
+        if actual_lock_hash != LOCKFILE_SHA256:
+            failures["lockfile_sha256"] = f"expected {LOCKFILE_SHA256}, got {actual_lock_hash}"
         try:
             expected = _parse_lockfile(lock_path)
         except Exception as exc:
@@ -127,6 +133,8 @@ def runtime_freeze_report(repo_root: Path) -> dict[str, object]:
         "python_expected": ".".join(map(str, PYTHON_VERSION)),
         "python_actual": ".".join(map(str, current_python)),
         "lockfile": LOCKFILE.as_posix(),
+        "lockfile_sha256_expected": LOCKFILE_SHA256,
+        "lockfile_sha256_actual": actual_lock_hash,
         "locked_package_count": len(expected),
         "status": "PASS" if not failures else "FAIL",
         "failures": failures,
@@ -143,7 +151,7 @@ def verify_all(repo_root: Path) -> dict[str, object]:
         "status": status,
         "source": source,
         "runtime": runtime,
-        "note": "Predictive source and runtime are frozen to the first eligible META_FWD_001 run; audit/settlement code is outside the frozen predictor closure.",
+        "note": "Predictive source, dependency lock and runtime are frozen to the first eligible META_FWD_001 run; audit/settlement code is outside the frozen predictor closure.",
     }
 
 
