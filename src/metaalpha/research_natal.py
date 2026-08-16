@@ -11,7 +11,7 @@ import pandas as pd
 
 from .controls import add_shifted_feature
 from .data_sources import DataManifest, fetch_akshare_index
-from .labels import add_forward_labels
+from .labels import add_forward_labels, purge_forward_boundary
 from .natal_transit import (
     NatalChartSpec,
     SSE_NATAL_V1,
@@ -70,8 +70,9 @@ EXPERIMENTS: tuple[NatalExperimentSpec, ...] = (
 
 SHIFT_SESSIONS = (17, 31, 47)
 FAKE_NATAL_OFFSETS = (17, 31, 47)
+HAC_MAXLAGS = {"ret_fwd_1": 5, "vol_fwd_5": 20}
 
-# These are descriptive historical eras only. None is a holdout.
+# Descriptive historical eras only. None is a holdout.
 ERAS = (
     ("history_all", None, "2026-08-14"),
     ("era_1990_2004", None, "2004-12-31"),
@@ -93,14 +94,20 @@ def fake_natal_specs() -> tuple[NatalChartSpec, ...]:
     )
 
 
-def _slice_dates(df: pd.DataFrame, start: str | None, end: str | None) -> pd.DataFrame:
+def _slice_dates(
+    df: pd.DataFrame,
+    start: str | None,
+    end: str | None,
+    *,
+    target: str,
+) -> pd.DataFrame:
     dates = pd.to_datetime(df["date"], errors="raise")
     mask = pd.Series(True, index=df.index)
     if start is not None:
         mask &= dates >= pd.Timestamp(start)
     if end is not None:
         mask &= dates <= pd.Timestamp(end)
-    return df.loc[mask].copy()
+    return purge_forward_boundary(df.loc[mask].copy(), target=target)
 
 
 def _fake_feature_name(spec_id: str, real_feature: str) -> str:
@@ -117,12 +124,6 @@ def _add_fake_natal_features_once(
     *,
     real_features: Iterable[str],
 ) -> pd.DataFrame:
-    """Calculate each fake natal chart once for the full dataset.
-
-    Earlier prototype code recalculated the same fake chart for each era and
-    hypothesis. That was statistically equivalent but wasteful. This version
-    changes only execution cost, not any registered feature definition.
-    """
     out = df.copy()
     dates = out["date"].tolist()
     wanted = tuple(real_features)
@@ -177,7 +178,6 @@ def _evaluate_one_era(
     min_n: int,
 ) -> list[pd.DataFrame]:
     results: list[pd.DataFrame] = []
-
     jobs = (
         ("registered_real_natal", spec.features, spec.family_name),
         ("shift_null", _shift_features_for(spec), f"{spec.family_name}__shift_null"),
@@ -190,6 +190,8 @@ def _evaluate_one_era(
             spec.target,
             family_name=family_name,
             min_n=min_n,
+            inference="hac",
+            hac_maxlags=HAC_MAXLAGS[spec.target],
         )
         if r.empty:
             continue
@@ -214,6 +216,8 @@ def _diagnostics(screen: pd.DataFrame) -> pd.DataFrame:
                 "min_family_fdr": float(g["p_fdr_bh_family"].min()),
                 "max_abs_effect_std": float(g["effect_std"].abs().max()),
                 "median_abs_effect_std": float(g["effect_std"].abs().median()),
+                "inference": str(g["inference"].iloc[0]),
+                "hac_maxlags": int(g["hac_maxlags"].iloc[0]),
             }
         )
     return pd.DataFrame(rows).sort_values(["hypothesis_id", "era", "test_kind"]).reset_index(drop=True)
@@ -226,7 +230,7 @@ def run_historical_exploration(
     manifest: DataManifest | None = None,
     min_n: int = 100,
 ) -> dict[str, pd.DataFrame]:
-    """Run preregistered historical exploration; there is no holdout path."""
+    """Corrected historical exploration; there is no holdout/acceptance path."""
     out_dir.mkdir(parents=True, exist_ok=True)
     base = raw.copy()
     if "symbol" not in base.columns:
@@ -243,7 +247,7 @@ def run_historical_exploration(
     parts: list[pd.DataFrame] = []
     for spec in EXPERIMENTS:
         for era_name, start, end in ERAS:
-            era = _slice_dates(analysis_frame, start, end)
+            era = _slice_dates(analysis_frame, start, end, target=spec.target)
             parts.extend(_evaluate_one_era(era, spec=spec, era_name=era_name, min_n=min_n))
 
     screen = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
@@ -255,6 +259,12 @@ def run_historical_exploration(
         (out_dir / "data_manifest.json").write_text(manifest.to_json() + "\n", encoding="utf-8")
 
     meta = {
+        "analysis_status": "CORRECTED_HISTORICAL_EXPLORATION",
+        "corrections": [
+            "vol_fwd_h strictly uses t+1..t+h returns",
+            "era tails purged by target horizon",
+            "OLS HAC/Newey-West inference replaces IID Welch inference",
+        ],
         "branch": "SSE_NATAL_V1",
         "historical_status": "EXPLORATORY_ONLY",
         "historical_last_date": "2026-08-14",
@@ -262,6 +272,7 @@ def run_historical_exploration(
         "real_natal_anchor": SSE_NATAL_V1.anchor.isoformat(),
         "fake_natal_anchors": {x.id: x.anchor.isoformat() for x in fake_natal_specs()},
         "shift_null_sessions": list(SHIFT_SESSIONS),
+        "hac_maxlags": HAC_MAXLAGS,
         "minimum_observations_per_level": min_n,
         "rows": int(len(dataset)),
     }
@@ -271,13 +282,13 @@ def run_historical_exploration(
     )
 
     lines = [
-        "# SSE_NATAL_V1 × Transit — Historical Exploration",
+        "# SSE_NATAL_V1 × Transit — Corrected Historical Exploration",
         "",
-        "**Evidence status: exploratory only. No row through 2026-08-14 is a holdout.**",
+        "**Evidence status: exploratory only. Earlier volatility results are invalidated by a forward-label alignment bug and IID inference.**",
+        "",
+        "This corrected run uses strictly future-only volatility labels, target-horizon boundary purging and HAC/Newey-West inference.",
         "",
         f"Real natal anchor: `{SSE_NATAL_V1.anchor.isoformat()}`",
-        "",
-        "Controls: shifted-session features at 17/31/47 sessions and fake natal anchors at +17/+31/+47 calendar days.",
         "",
         "## Diagnostic minima",
         "",
@@ -286,33 +297,32 @@ def run_historical_exploration(
         lines.append("No eligible tests met the sample threshold.")
     else:
         lines.append(diag.to_markdown(index=False))
-    lines.extend(
-        [
-            "",
-            "## Gate",
-            "Historical anomalies may nominate future hypotheses only. They cannot confirm SSE_NATAL_V1 because the historical outcomes were already exposed before this branch was frozen.",
-        ]
-    )
     (out_dir / "SUMMARY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     return {"dataset": dataset, "screen": screen, "diagnostics": diag}
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run SSE_NATAL_V1 historical exploratory research")
+    parser = argparse.ArgumentParser(description="Run corrected SSE_NATAL_V1 historical exploration")
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--input", type=Path)
     source.add_argument("--fetch-akshare", action="store_true")
     parser.add_argument("--symbol", default="000001")
     parser.add_argument("--start", default="19901219")
     parser.add_argument("--end", default="20260814")
-    parser.add_argument("--out", type=Path, default=Path("reports/sse_natal_exploratory"))
+    parser.add_argument("--provider", default="sina", choices=("sina", "tencent", "eastmoney_direct", "eastmoney_mapped"))
+    parser.add_argument("--out", type=Path, default=Path("reports/sse_natal_corrected"))
     parser.add_argument("--min-n", type=int, default=100)
     args = parser.parse_args()
 
     manifest: DataManifest | None = None
     if args.fetch_akshare:
-        raw, manifest = fetch_akshare_index(symbol=args.symbol, start_date=args.start, end_date=args.end)
+        raw, manifest = fetch_akshare_index(
+            symbol=args.symbol,
+            start_date=args.start,
+            end_date=args.end,
+            provider=args.provider,
+        )
     else:
         raw = pd.read_csv(args.input)
 
