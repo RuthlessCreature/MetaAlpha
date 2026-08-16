@@ -1,0 +1,114 @@
+hypothesis_id: HYBRID_REPL_001
+evaluated_at: '2026-08-16'
+evidence_status: PREREGISTERED_EXTERNAL_INDEX_HISTORICAL_REPLICATION
+selection_source: HYBRID_ALPHA_001
+corrected_workflow_run_id: 31951599703
+commit_evaluated: 3ff58bcf3719484b6b535d9016101ebe6c244696
+artifact:
+  id: 9264816985
+  sha256: 729097b194bd72827166d4bd9adf629679ec19c2a888877cbec3c6faf014e9e7
+attempt_history:
+  - attempt: 1
+    workflow_run_id: 31951316355
+    status: INVALID_FOR_REPLICATION_DECISION_DATA_QC_FAILURE
+    partial_statistics_used: false
+  - attempt: 2
+    workflow_run_id: 31951599703
+    status: VALID_COMPLETE_REPLICATION
+volume_qc:
+  rule: 'non-positive upstream volume placeholders mapped to missing for feature construction only; price/date rows and one-session targets preserved'
+  no_volume_imputation: true
+  common_complete_row_exclusion: true
+indices:
+  sse50:
+    symbol: sh000016
+    raw_rows: 5493
+    nonpositive_volume_rows_mapped_missing: 0
+    eligible_rows: 5472
+    oos_rows: 4035
+    canonical_sha256: 259f6c3e579916602c455cc8c7f51a4decc707b0867ae18c3af0602ecb39e583
+    cycle_gate_pass: false
+    ziping_gate_pass: false
+    cycle:
+      logloss_improvement: -0.00015478818424552454
+      brier_improvement: -0.00008211866023039027
+      auc_delta: -0.0019657636258303413
+      windows_logloss_improved: 2
+      windows_brier_improved: 2
+    ziping:
+      logloss_improvement: 0.001092559632157819
+      brier_improvement: 0.0005489719092826584
+      auc_delta: 0.0036578288790601876
+      windows_logloss_improved: 4
+      windows_brier_improved: 4
+      bootstrap_logloss_probability_positive: 0.897
+      bootstrap_brier_probability_positive: 0.905
+      bootstrap_logloss_p_holm: 0.20599999999999996
+      bootstrap_brier_p_holm: 0.18999999999999995
+  csi300:
+    symbol: sh000300
+    raw_rows: 5971
+    nonpositive_volume_rows_mapped_missing: 721
+    eligible_rows: 5230
+    oos_rows: 4035
+    canonical_sha256: b9299dd0fa9c3e5c9245ebbb2e8e310c53856cd62f6f3536cb93dc3081ad493f
+    cycle_gate_pass: false
+    ziping_gate_pass: false
+  csi500:
+    symbol: sh000905
+    raw_rows: 5250
+    nonpositive_volume_rows_mapped_missing: 0
+    eligible_rows: 5229
+    oos_rows: 4035
+    canonical_sha256: 00cdefc3ed60b2eec69f5c2139aac09ae107500e288e6af547dd5f8d0724ad95
+    cycle_gate_pass: false
+    ziping_gate_pass: false
+    cycle:
+      logloss_improvement: 0.005672128990713232
+      brier_improvement: 0.002663927012404116
+      auc_delta: 0.006909272729695881
+      windows_logloss_improved: 2
+      windows_brier_improved: 2
+      bootstrap_logloss_probability_positive: 1.0
+      bootstrap_brier_probability_positive: 1.0
+      bootstrap_logloss_p_holm: 0.0
+      bootstrap_brier_p_holm: 0.0
+    ziping:
+      logloss_improvement: 0.0030667425045743935
+      brier_improvement: 0.0014942460811759872
+      auc_delta: 0.006867564375240942
+      windows_logloss_improved: 2
+      windows_brier_improved: 2
+      bootstrap_logloss_probability_positive: 0.9715
+      bootstrap_brier_probability_positive: 0.977
+      bootstrap_logloss_p_holm: 0.02849999999999997
+      bootstrap_brier_p_holm: 0.02300000000000002
+  sz_component:
+    symbol: sz399001
+    raw_rows: 8612
+    nonpositive_volume_rows_mapped_missing: 2
+    eligible_rows: 8561
+    oos_rows: 4035
+    canonical_sha256: f3c7b36caf3b91335c8c6768ee31f555790bfb5e016cbbd299a866be7fb63170
+    cycle_gate_pass: false
+    ziping_gate_pass: false
+replication_decision:
+  cycle:
+    indices_evaluated: 4
+    indices_passed: 0
+    required_indices_passed: 3
+    replication_pass: false
+  ziping:
+    indices_evaluated: 4
+    indices_passed: 0
+    required_indices_passed: 3
+    replication_pass: false
+interpretation:
+  - 'The frozen cycle and Ziping algorithms do not generalize under the preregistered gate to the four external indices.'
+  - 'HYBRID_ALPHA_001 remains a Shanghai Composite historical finding only and is downgraded from any cross-index interpretation.'
+  - 'HYBRID_FWD_001 remains active because it is prospective and tests persistence on truly unseen Shanghai Composite outcomes.'
+stop_rules:
+  - no dropping failed replication indices
+  - no feature reselection from replication results under this hypothesis id
+  - no nonlinear rescue under this hypothesis id
+  - no weakening of temporal or cross-index gates
