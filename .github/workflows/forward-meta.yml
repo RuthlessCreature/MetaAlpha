@@ -21,12 +21,6 @@ on:
         description: 'Prediction date YYYY-MM-DD; blank uses current Shanghai date'
         required: false
         type: string
-  # One-time bootstrap: creation of this workflow precommits 2026-08-17.
-  # Removed after the first record is verified.
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/forward-meta.yml'
 
 permissions:
   contents: write
@@ -38,7 +32,6 @@ concurrency:
 jobs:
   prediction:
     if: >-
-      github.event_name == 'push' ||
       (github.event_name == 'schedule' && github.event.schedule == '10 0 * * 1-5') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'prediction')
     runs-on: ubuntu-latest
@@ -56,13 +49,9 @@ jobs:
         id: generate
         shell: bash
         run: |
-          if [ '${{ github.event_name }}' = 'push' ]; then
-            DATE='2026-08-17'
-          else
-            DATE='${{ inputs.date }}'
-            if [ -z "$DATE" ]; then
-              DATE=$(TZ=Asia/Shanghai date +%F)
-            fi
+          DATE='${{ inputs.date }}'
+          if [ -z "$DATE" ]; then
+            DATE=$(TZ=Asia/Shanghai date +%F)
           fi
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
           OUT="forward/META_FWD_001/predictions/${DATE}.json"
@@ -71,6 +60,12 @@ jobs:
             exit 0
           fi
           python -m metaalpha.forward_meta signal --date "$DATE" --out "$OUT"
+      - name: Audit prediction structure before commit
+        run: |
+          python -m metaalpha.forward_audit \
+            --predictions-dir forward/META_FWD_001/predictions \
+            --repo-root . \
+            --skip-git-history
       - name: Commit immutable tournament prediction
         run: |
           git config user.name 'github-actions[bot]'
@@ -99,6 +94,11 @@ jobs:
           python-version: '3.11'
       - name: Install data dependencies
         run: pip install -e '.[data]'
+      - name: Audit immutable tournament ledger before scoring
+        run: |
+          python -m metaalpha.forward_audit \
+            --predictions-dir forward/META_FWD_001/predictions \
+            --repo-root .
       - name: Settle realized tournament predictions
         run: |
           END=$(TZ=Asia/Shanghai date +%Y%m%d)
