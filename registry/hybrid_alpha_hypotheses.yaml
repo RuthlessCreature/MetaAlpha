@@ -111,6 +111,8 @@ hypotheses:
       bootstrap_seed: 20260816
       one_sided_probability_improvement_min: 0.95
       bootstrap_primary_losses_required: [log_loss, brier_score]
+      family_multiple_testing: holm_across_4_symbolic_blocks_separately_for_each_primary_loss
+      family_adjusted_p_max: 0.05
       promotion_rule: 'a symbolic block must satisfy all criteria; otherwise no forward promotion'
     controls:
       - identical market baseline for every comparison
