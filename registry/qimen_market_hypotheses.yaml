@@ -1,0 +1,117 @@
+schema_version: 1
+project: MetaAlpha
+hypotheses:
+  - id: QIMEN_MARKET_001
+    version: 1
+    status: exploratory_registered_no_unseen_history
+    registered_at: 2026-08-16
+    title: Raw QIMEN_V1 plate states and same-session Shanghai Composite return
+
+    evidence_boundary: >-
+      All Shanghai Composite observations through 2026-08-14 are already exposed at project level.
+      Historical results are exploratory only. Any nominated rule requires a separately frozen future-only experiment.
+
+    engine:
+      id: QIMEN_V1
+      method: 拆补法
+      plate_type: 转盘
+      market_anchor: '09:25:00 Asia/Shanghai'
+      validation_required: true
+      aggregate_score_defined: false
+
+    target:
+      id: ret_session_t
+      definition: close[t] / close[t-1] - 1
+      timing: feature fixed at 09:25 on session t; target closes after feature generation
+      overlap: none
+
+    market:
+      symbol: '000001'
+      provider: sina
+      provider_method: ak.stock_zh_index_daily
+      provider_switching: forbidden inside comparison
+
+    registered_blocks:
+      - id: ju_state
+        column: qimen__v1__dun_ju_yuan
+      - id: duty_star_door
+        column: qimen__v1__duty_star_door
+      - id: duty_landings
+        column: qimen__v1__duty_landings
+      - id: rotation_state
+        column: qimen__v1__rotation_state
+      - id: xun_target_state
+        column: qimen__v1__xun_target_state
+      - id: void_relation_state
+        column: qimen__v1__void_relation_state
+      - id: yima_relation_state
+        column: qimen__v1__yima_relation_state
+      - id: duty_door_palace_composition
+        column: qimen__v1__duty_door_palace_composition
+      - id: yima_palace_composition
+        column: qimen__v1__yima_palace_composition
+
+    ingredient_benchmarks:
+      - id: direct_solar_term
+        column: qimen__v1__solar_term
+      - id: direct_day_pillar
+        column: qimen__v1__day_pillar
+      - id: direct_hour_pillar
+        column: qimen__v1__hour_pillar
+      note: >-
+        These are reported as ingredient benchmarks, not placed in the regression baseline,
+        because the Qimen plate is a deterministic transform of calendar ingredients at a fixed clock time.
+
+    frozen_market_baseline:
+      continuous:
+        - ret_session_lag1
+        - vol_back_5_lag1
+        - vol_back_20_lag1
+        - normalized_time
+        - normalized_time_squared
+      fixed_effects:
+        - Gregorian weekday
+        - Gregorian month
+      timing_rule: every market baseline variable is known no later than t-1 close
+
+    inference:
+      model_per_block: >-
+        ret_session_t ~ frozen_market_baseline + registered_qimen_block_FE
+      covariance: Newey-West HAC
+      hac_maxlags: 5
+      block_test: joint Wald that all block dummy coefficients equal zero
+      categorical_rare_level_rule: levels with fewer than 50 eligible observations in an era collapse to __RARE__
+      minimum_rows: 500
+      multiplicity: Benjamini-Hochberg across the 9 Qimen blocks separately within each era/test class
+      identifiability_qc:
+        - full design matrix must be full column rank
+        - HAC covariance submatrix for tested block must be full rank
+        - invalid tests retain audit rows with null p-values and are excluded from FDR
+
+    shifted_controls:
+      sessions: [17, 31, 47]
+      rule: shift each complete Qimen block by actual dataset sessions and fit the identical frozen model
+
+    descriptive_eras:
+      - history_all: 1990-12-19..2026-08-14
+      - era_1990_2004: 1990-12-19..2004-12-31
+      - era_2005_2014: 2005-01-01..2014-12-31
+      - era_2015_2020: 2015-01-01..2020-12-31
+      - era_2021_2026: 2021-01-01..2026-08-14
+
+    exploratory_interest_gate:
+      require_full_history_family_fdr_lte: 0.05
+      require_same_block_family_fdr_lte_0_10_in_at_least_two_of_era_2005_2014_era_2015_2020_era_2021_2026: true
+      require_registered_raw_p_less_than_all_17_31_47_shift_raw_p_in_at_least_two_later_eras: true
+      require_no_invalid_inference_for_candidate_block: true
+      meaning: nomination only for a separately frozen future experiment
+
+    forbidden_actions:
+      - call historical evidence confirmatory
+      - score 开休生 as positive or 死惊伤 as negative inside version 1
+      - choose a Qimen convention using market outcomes
+      - change the 09:25 anchor after viewing results
+      - use same-session close/high/low/return in the predictor baseline
+      - add or remove registered blocks after historical evaluation and retain version 1
+      - change HAC lag or shifted-control offsets after viewing results
+      - switch provider after viewing results
