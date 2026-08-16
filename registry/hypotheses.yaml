@@ -23,31 +23,90 @@ hypotheses:
       require_null_advantage: true
 
   - id: GANZHI_001
-    version: 1
+    version: 2
     branch: ganzhi
-    status: draft
+    status: registered
     title: Day stem and branch effects on next-session return
-    question: Do deterministic day stem/branch states alter next-session return distribution?
+    question: Do solar-term-aware deterministic day stem/branch states alter next-session return distribution?
     feature_set:
-      - ganzhi__v1__day_stem
-      - ganzhi__v1__day_branch
-      - ganzhi__v1__day_jiazi
+      - ganzhi__v2__day_stem
+      - ganzhi__v2__day_branch
+      - ganzhi__v2__day_pillar
+      - ganzhi__v2__day_stem_element
+      - ganzhi__v2__day_stem_polarity
     target: ret_fwd_1
     direction: exploratory
     post_hoc: false
     registered_at: 2026-08-16
-    calendar_convention: pending ephemeris-backed convention freeze
+    calendar_convention: lunar_python 1.4.8; Asia/Shanghai; session anchor 09:25
     controls:
       - calendar__v1__weekday
       - control__v1__random_stem
       - control__v1__random_branch
       - control__v1__random_jiazi
-    multiple_testing_family: ganzhi_day_v1
+    multiple_testing_family: ganzhi_day_v2
     acceptance:
       min_observations_per_level: 100
       require_oos: true
       require_null_advantage: true
-    notes: Cannot move to registered until calendrical convention is frozen and implemented.
+
+  - id: ZIPING_001
+    version: 1
+    branch: bazi_ziping
+    status: registered
+    title: Ziping Zhenquan month-command pattern and next-session return
+    question: Does a Ziping Zhenquan operationalization of month-command pattern family contain incremental next-session return information?
+    feature_set:
+      - zpzt__v1__month_primary_ten_god
+      - zpzt__v1__pattern_candidate
+      - zpzt__v1__use_mode
+      - zpzt__v1__month_hidden_transmitted_count
+      - zpzt__v1__month_disruption_count
+    target: ret_fwd_1
+    direction: exploratory
+    post_hoc: false
+    registered_at: 2026-08-16
+    classical_method: Ziping Zhenquan month-command-first operationalization
+    calendar_convention: lunar_python 1.4.8; Asia/Shanghai; session anchor 09:25
+    controls:
+      - calendar__v1__weekday
+      - calendar__v1__month
+      - control__v1__random_jiazi
+    multiple_testing_family: ziping_pattern_v1
+    acceptance:
+      min_observations_per_level: 100
+      require_oos: true
+      require_null_advantage: true
+      require_incremental_over_calendar: true
+
+  - id: ZIPING_002
+    version: 1
+    branch: bazi_ziping
+    status: registered
+    title: Ziping Zhenquan structural routes and forward market risk
+    question: Do registered 顺用/逆用 structural route flags and month-command disruptions contain information about forward volatility or extreme loss?
+    feature_set:
+      - zpzt__v1__route_hit_count
+      - zpzt__v1__month_clash
+      - zpzt__v1__month_harm
+      - zpzt__v1__month_break
+      - zpzt__v1__month_punishment
+    target: vol_fwd_5
+    direction: exploratory
+    post_hoc: false
+    registered_at: 2026-08-16
+    classical_method: Ziping Zhenquan 成败/制化 primitive flags; not a final fortune score
+    calendar_convention: lunar_python 1.4.8; Asia/Shanghai; session anchor 09:25
+    controls:
+      - calendar__v1__weekday
+      - calendar__v1__month
+      - control__v1__random_jiazi
+    multiple_testing_family: ziping_structure_v1
+    acceptance:
+      min_observations_per_level: 100
+      require_oos: true
+      require_null_advantage: true
+      require_incremental_over_calendar: true
 
   - id: SOLARTERM_001
     version: 1
@@ -62,7 +121,7 @@ hypotheses:
     direction: exploratory
     post_hoc: false
     registered_at: 2026-08-16
-    calendar_convention: pending astronomical convention freeze
+    calendar_convention: pending exact term-distance implementation
     controls:
       - calendar__v1__month
       - control__v1__random_jiazi
