@@ -9,6 +9,8 @@ import pandas as pd
 from scipy import stats
 import statsmodels.api as sm
 
+from .labels import purge_forward_boundary
+
 
 @dataclass(frozen=True)
 class WalkForwardSplit:
@@ -118,14 +120,7 @@ def evaluate_categorical_feature_hac(
     min_n: int = 30,
     maxlags: int = 20,
 ) -> pd.DataFrame:
-    """One-vs-rest OLS with Newey-West/HAC covariance.
-
-    The indicator coefficient equals the conditional-mean difference between a
-    level and all other levels. HAC covariance preserves the same effect
-    estimate while correcting standard errors for serial dependence up to the
-    preregistered lag length. This is the default inferential path for market
-    time-series targets, especially overlapping forward windows.
-    """
+    """One-vs-rest OLS with Newey-West/HAC covariance."""
     if maxlags < 0:
         raise ValueError("maxlags must be >= 0")
 
@@ -229,8 +224,14 @@ def walk_forward_categorical_stability(
     min_n: int = 15,
     inference: str = "welch",
     hac_maxlags: int = 20,
+    purge_forward_tail: bool = True,
 ) -> pd.DataFrame:
-    """Measure a frozen categorical feature on successive future-only test blocks."""
+    """Measure a frozen categorical feature on successive future-only test blocks.
+
+    When ``purge_forward_tail`` is true, the last target-horizon rows of each
+    test block are removed so their forward labels cannot consume outcomes from
+    the next fold.
+    """
     if feature not in df.columns or target not in df.columns:
         raise ValueError("feature and target must exist in dataframe")
 
@@ -243,7 +244,9 @@ def walk_forward_categorical_stability(
         expanding_walk_forward_splits(len(ordered), min_train=min_train, test_size=test_size),
         start=1,
     ):
-        test = ordered.iloc[split.test_start:split.test_end]
+        test = ordered.iloc[split.test_start:split.test_end].copy()
+        if purge_forward_tail:
+            test = purge_forward_boundary(test, target=target)
         if inference == "hac":
             r = evaluate_categorical_feature_hac(
                 test,
@@ -260,7 +263,7 @@ def walk_forward_categorical_stability(
         r.insert(0, "fold", fold)
         r["test_start_row"] = split.test_start
         r["test_end_row"] = split.test_end
-        if "date" in test.columns:
+        if "date" in test.columns and not test.empty:
             r["test_first_date"] = pd.to_datetime(test["date"]).min().strftime("%Y-%m-%d")
             r["test_last_date"] = pd.to_datetime(test["date"]).max().strftime("%Y-%m-%d")
         rows.append(r)
