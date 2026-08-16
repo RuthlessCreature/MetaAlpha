@@ -1,0 +1,57 @@
+schema_version: 1
+frozen_at: '2026-08-17 before first target-session outcome'
+purpose: >-
+  Prevent post-hoc promotion of whichever overlapping prospective experiment looks
+  best. These forward tests share markets, dates, features and/or historical model
+  selection and therefore must not be counted as independent replications.
+primary_confirmatory_family:
+  id: META_FWD_001
+  role: primary
+  claim_scope: >-
+    Whether any member of the frozen cycle / ziping / qimen / meihua candidate
+    family adds prospective probability information over the frozen lagged-market
+    baseline on Shanghai Composite under family-wise multiple-testing control.
+  gate_sample: first 500 eligible settled market sessions
+  multiplicity: Holm across four candidate branches for each primary loss
+  negative_control: LIUYAO_HASH_V1
+  interpretation_priority: highest among current prospective symbolic tests
+secondary_shadow_checks:
+  - id: HYBRID_FWD_001
+    role: overlapping_shadow
+    overlaps_with_primary:
+      - same Shanghai Composite target dates
+      - same baseline family
+      - cycle branch
+      - ziping branch
+      - related expanding-refit logistic framework
+    permitted_use: >-
+      Engineering consistency and a narrower prospective read on the historically
+      nominated cycle/ziping pair.
+    prohibited_interpretation: >-
+      Must not be counted as an independent replication of META_FWD_001 and must
+      not override a META_FWD_001 family-level failure.
+  - id: ZIPING_FWD_001
+    role: specific_rule_followup
+    hypothesis: historical 偏财 month-command level -> ret_fwd_1
+    permitted_use: >-
+      Prospective test of one previously nominated Ziping rule under its own frozen
+      definition.
+    prohibited_interpretation: >-
+      A pass cannot establish Ziping as the winning branch family and cannot
+      override META_FWD_001 or the failed cross-index replication evidence.
+historical_external_replication:
+  id: HYBRID_REPL_001
+  result:
+    cycle: 'FAIL 0/4 indices'
+    ziping: 'FAIL 0/4 indices'
+  status_in_evidence_stack: retained_negative_evidence
+  rule: >-
+    Prospective Shanghai-only success does not erase the existing failure to
+    replicate across SSE50, CSI300, CSI500 and Shenzhen Component.
+claim_rules:
+  - never sum pass counts across META_FWD_001, HYBRID_FWD_001 and ZIPING_FWD_001 as if independent
+  - primary family failure cannot be rescued by selecting the best secondary test
+  - any new future family requires a new preregistration before its first outcome
+  - descriptive daily leader is not a winner before the locked gate
+  - predictive evidence never implies metaphysical causality
+  - null or negative results remain part of the permanent evidence ledger
