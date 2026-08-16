@@ -1,4 +1,4 @@
-name: HYBRID_REPL_001 Cross-index Replication
+name: HYBRID_REPL_001 Cross-index Replication (QC-corrected)
 
 on:
   workflow_dispatch:
