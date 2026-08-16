@@ -1,0 +1,41 @@
+name: SSE Data Provider Reconciliation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/data-reconciliation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install data dependencies
+        run: pip install -e '.[data]'
+      - name: Reconcile Eastmoney Sina and Tencent
+        run: >-
+          python -m metaalpha.data_reconcile
+          --symbol 000001
+          --start 19901219
+          --end 20260814
+          --out reports/data_reconciliation
+      - name: Show summary
+        if: success()
+        run: cat reports/data_reconciliation/SUMMARY.md
+      - name: Upload reconciliation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sse-data-reconciliation-${{ github.sha }}
+          path: reports/data_reconciliation
+          if-no-files-found: warn
+          retention-days: 30
