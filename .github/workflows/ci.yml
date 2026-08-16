@@ -7,16 +7,21 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Install
-        run: pip install -e '.[dev]'
+          python-version: '3.11.15'
+      - name: Install frozen META runtime and test-only tooling
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+          pip install pytest==9.1.1 iniconfig==2.3.0 pluggy==1.6.0 pygments==2.20.0
+      - name: Verify META_FWD_001 predictor source and runtime freeze
+        run: python -m metaalpha.forward_runtime_lock --repo-root .
       - name: Test
         run: pytest -q
       - name: Audit META_FWD_001 immutable prediction ledger
