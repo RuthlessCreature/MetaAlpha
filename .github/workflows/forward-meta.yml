@@ -94,27 +94,35 @@ jobs:
           python-version: '3.11'
       - name: Install data dependencies
         run: pip install -e '.[data]'
-      - name: Audit immutable tournament ledger before scoring
+      - name: Audit immutable prediction ledger before settlement
         run: |
           python -m metaalpha.forward_audit \
             --predictions-dir forward/META_FWD_001/predictions \
             --repo-root .
-      - name: Settle realized tournament predictions
+      - name: Lock new realized outcomes and score only from locked ledger
         run: |
           END=$(TZ=Asia/Shanghai date +%Y%m%d)
-          python -m metaalpha.forward_meta score \
+          python -m metaalpha.forward_meta_ledger \
             --predictions-dir forward/META_FWD_001/predictions \
+            --realized-dir forward/META_FWD_001/realized \
             --out-dir forward/META_FWD_001/status \
             --end "$END"
-      - name: Commit status and one-time gate if created
+      - name: Audit realized outcome structure before commit
+        run: |
+          python -m metaalpha.forward_realized_audit \
+            --realized-dir forward/META_FWD_001/realized \
+            --predictions-dir forward/META_FWD_001/predictions \
+            --repo-root . \
+            --skip-git-history
+      - name: Commit append-only outcomes and status
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add forward/META_FWD_001/status/
+          git add forward/META_FWD_001/realized/ forward/META_FWD_001/status/
           if git diff --cached --quiet; then
-            echo 'No status change to commit.'
+            echo 'No realized outcome or status change to commit.'
             exit 0
           fi
-          git commit -m 'forward: update META_FWD_001 realized status'
+          git commit -m 'forward: lock META_FWD_001 realized outcomes and update status'
           git pull --rebase origin main
           git push origin HEAD:main
