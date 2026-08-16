@@ -1,0 +1,67 @@
+version: 1
+frozen_at: '2026-08-16'
+family_id: HYBRID_FWD_001
+status: PREREGISTERED_FUTURE_ONLY
+selection_source: HYBRID_ALPHA_001
+forward_start: '2026-08-17'
+market:
+  symbol: '000001'
+  provider_required: sina
+  anchor: '09:25 Asia/Shanghai'
+  outcome: same_session_close_to_close_direction
+models:
+  baseline:
+    symbolic_block: null
+  cycle:
+    symbolic_block: cycle
+    historical_gate: PASS
+  ziping:
+    symbolic_block: ziping
+    historical_gate: PASS
+excluded_after_historical_selection:
+  - qimen
+  - all_symbolic
+training_policy:
+  type: expanding_daily_refit
+  data_cutoff: 'latest realized market session strictly before forecast date'
+  baseline_features: 'exact HYBRID_ALPHA_001 frozen baseline'
+  symbolic_features: 'exact HYBRID_ALPHA_001 cycle or ziping block; no deletions or additions'
+  model_family: ridge_logistic_regression
+  c_grid: [0.01, 0.1, 1.0, 10.0]
+  inner_train_cut_fractions: [0.60, 0.70, 0.80]
+  inner_validation_fraction: 0.10
+  c_tie_break: smallest_C
+record_policy:
+  immutable_daily_prediction: true
+  eligibility: 'record timestamp strictly before target-date 09:25 Asia/Shanghai'
+  nontrading_weekday_records: 'retained but excluded from settled-session statistics'
+  late_records: 'retained but permanently ineligible'
+  overwrite_existing_prediction: false
+  required_market_session_coverage: 0.98
+future_gate:
+  trigger: 'first time at least 500 eligible settled market sessions exist'
+  locked_sample: 'first 500 eligible settled sessions in chronological order'
+  gate_runs_once: true
+  chronological_subwindows: 4
+  required_subwindows_with_logloss_improvement: 3
+  required_subwindows_with_brier_improvement: 3
+  mean_logloss_improvement_min: 0.001
+  mean_brier_improvement_min: 0.0005
+  auc_degradation_max: 0.005
+  bootstrap:
+    block_sessions: 20
+    repetitions: 2000
+    seed: 20260816
+    probability_positive_min: 0.95
+  family_multiple_testing:
+    method: holm
+    family: [cycle, ziping]
+    applied_separately_to: [log_loss, brier_score]
+    adjusted_one_sided_p_max: 0.05
+  coverage_min: 0.98
+post_gate:
+  verdict_is_immutable: true
+  later_data: descriptive_monitoring_only
+interpretation:
+  - PASS is prospective predictive evidence for the frozen algorithm, not metaphysical causality
+  - FAIL may not be rescued by historical or forward feature deletion under this family id
