@@ -1,0 +1,120 @@
+name: HYBRID_FWD_001 Future Test
+
+on:
+  schedule:
+    # 08:00 Asia/Shanghai, Monday-Friday. If GitHub delays the run beyond
+    # 09:25, the generated record remains in the audit trail but is ineligible.
+    - cron: '0 0 * * 1-5'
+    # 16:30 Asia/Shanghai, Monday-Friday, after the A-share close.
+    - cron: '30 8 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'prediction or score'
+        required: true
+        default: 'prediction'
+        type: choice
+        options:
+          - prediction
+          - score
+      date:
+        description: 'Prediction date YYYY-MM-DD; blank uses current Shanghai date'
+        required: false
+        type: string
+  # One-time bootstrap path: creation of this workflow precommits 2026-08-17.
+  # After the first record is verified this trigger is removed.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/forward-hybrid.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hybrid-fwd-001
+  cancel-in-progress: false
+
+jobs:
+  prediction:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 0 * * 1-5') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'prediction')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install data dependencies
+        run: pip install -e '.[data]'
+      - name: Resolve target date and generate immutable prediction
+        id: generate
+        shell: bash
+        run: |
+          if [ '${{ github.event_name }}' = 'push' ]; then
+            DATE='2026-08-17'
+          else
+            DATE='${{ inputs.date }}'
+            if [ -z "$DATE" ]; then
+              DATE=$(TZ=Asia/Shanghai date +%F)
+            fi
+          fi
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          OUT="forward/HYBRID_FWD_001/predictions/${DATE}.json"
+          if [ -e "$OUT" ]; then
+            echo "Prediction already exists; refusing overwrite and treating rerun as idempotent."
+            exit 0
+          fi
+          python -m metaalpha.forward_hybrid signal --date "$DATE" --out "$OUT"
+      - name: Commit immutable premarket prediction
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add forward/HYBRID_FWD_001/predictions/
+          if git diff --cached --quiet; then
+            echo 'Nothing new to commit.'
+            exit 0
+          fi
+          git commit -m "forward: precommit HYBRID_FWD_001 ${{ steps.generate.outputs.date }}"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+  score:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '30 8 * * 1-5') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'score')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install data dependencies
+        run: pip install -e '.[data]'
+      - name: Settle realized predictions on pinned Sina data
+        run: |
+          END=$(TZ=Asia/Shanghai date +%Y%m%d)
+          python -m metaalpha.forward_hybrid score \
+            --predictions-dir forward/HYBRID_FWD_001/predictions \
+            --out-dir forward/HYBRID_FWD_001/status \
+            --end "$END"
+      - name: Commit status and one-time gate if created
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add forward/HYBRID_FWD_001/status/
+          if git diff --cached --quiet; then
+            echo 'No status change to commit.'
+            exit 0
+          fi
+          git commit -m 'forward: update HYBRID_FWD_001 realized status'
+          git pull --rebase origin main
+          git push origin HEAD:main
