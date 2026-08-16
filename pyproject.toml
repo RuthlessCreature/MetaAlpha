@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metaalpha"
-version = "0.2.0a0"
+version = "0.3.0a0"
 description = "Falsifiable research framework for symbolic temporal factors and A-share markets"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,13 +14,16 @@ dependencies = [
   "PyYAML>=6.0",
   "scipy>=1.10",
   "lunar_python==1.4.8",
+  "tabulate>=0.9",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+data = ["akshare==1.18.84"]
 
 [project.scripts]
 metaalpha = "metaalpha.pipeline:main"
+metaalpha-ziping-sse = "metaalpha.research_ziping:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
