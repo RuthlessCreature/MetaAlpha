@@ -1,0 +1,16 @@
+hypothesis_id: HYBRID_REPL_001
+attempt: 1
+workflow_run_id: 31951316355
+commit_evaluated: c8a92dce4d1b477e03292bf0abfa82605b1d2f58
+status: INVALID_FOR_REPLICATION_DECISION_DATA_QC_FAILURE
+failure: 'A pinned Sina replication index contained non-positive volume placeholder rows; the generic market baseline correctly failed loudly before all four indices completed.'
+partial_results_policy:
+  inspected_for_statistical_result: false
+  usable_for_replication_decision: false
+  reason: 'The preregistered gate requires all four indices; a partial run cannot be selected or interpreted.'
+correction_before_rerun:
+  - preserve every OHLC/date row and therefore preserve one-session return targets
+  - map non-positive volume values to missing only for feature construction
+  - do not impute volume-derived predictors
+  - common complete-row policy excludes rows where frozen volume predictors are unavailable
+  - do not change feature lists, model family, tuning, outer windows, bootstrap or gates
