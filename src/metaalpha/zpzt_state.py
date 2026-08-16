@@ -5,16 +5,13 @@ from dataclasses import dataclass
 import pandas as pd
 
 from .bazi_ziping import (
-    BREAKS,
-    CLASHES,
-    HARMS,
     HIDDEN_STEMS,
     KILLINGS,
     OFFICIAL,
     OUTPUT,
     RESOURCE,
     WEALTH,
-    features_from_pillars,
+    features_from_pillars as primitive_features_from_pillars,
     ten_god,
 )
 from .ganzhi import BRANCH_ELEMENT, STEM_ELEMENT
@@ -77,7 +74,6 @@ def _visible_context(year: str, month: str, day: str, time: str) -> dict[str, ob
     killing_stems = [s for _, s, tg in visible_tg if tg == "七杀"]
     hurting_stems = [s for _, s, tg in visible_tg if tg == "伤官"]
     wealth_stems = [s for _, s, tg in visible_tg if tg in WEALTH]
-
     resource_stems = [s for _, s, tg in visible_tg if tg in RESOURCE]
     all_hidden = {hs for b in branches for hs in HIDDEN_STEMS[b]}
 
@@ -105,7 +101,7 @@ def _visible_context(year: str, month: str, day: str, time: str) -> dict[str, ob
 
 
 def evaluate_provisional_state(year: str, month: str, day: str, time: str) -> ProvisionalState:
-    base = features_from_pillars(year, month, day, time)
+    base = primitive_features_from_pillars(year, month, day, time)
     c = _visible_context(year, month, day, time)
     pattern = str(base["zpzt__v1__pattern_candidate"])
     disrupted = bool(base["zpzt__v1__month_disruption_count"])
@@ -243,7 +239,7 @@ def evaluate_provisional_state(year: str, month: str, day: str, time: str) -> Pr
     )
 
 
-def features_from_pillars(year: str, month: str, day: str, time: str) -> dict[str, object]:
+def state_features_from_pillars(year: str, month: str, day: str, time: str) -> dict[str, object]:
     s = evaluate_provisional_state(year, month, day, time)
     return {
         "zpzt_state__v1__formation_hit": int(s.formation),
@@ -268,7 +264,7 @@ def add_ziping_state_features(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(f"Ganzhi features required before Ziping state features: {missing}")
 
     rows = [
-        features_from_pillars(y, m, d, t)
+        state_features_from_pillars(y, m, d, t)
         for y, m, d, t in zip(*(df[c] for c in required))
     ]
     feat = pd.DataFrame(rows, index=df.index)
