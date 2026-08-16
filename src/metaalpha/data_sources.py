@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import time
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -56,23 +56,36 @@ def canonical_frame_sha256(df: pd.DataFrame) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def normalize_akshare_index_frame(raw: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
-    """Normalize AKShare ``index_zh_a_hist`` output to the MetaAlpha OHLCV contract.
+def normalize_akshare_index_frame(
+    raw: pd.DataFrame,
+    *,
+    symbol: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> pd.DataFrame:
+    """Normalize supported AKShare index-history outputs to the MetaAlpha contract.
 
-    This function deliberately validates the upstream schema instead of silently
-    accepting changed column names. An upstream interface mutation must fail
-    loudly so a different dataset is never mistaken for the registered one.
+    Supported providers expose either Chinese ``日期/开盘/...`` columns or
+    already-normalized English ``date/open/...`` columns. Required schema and
+    OHLC invariants are checked explicitly so provider fallback cannot silently
+    mutate the research dataset contract.
     """
     if raw is None or raw.empty:
         raise ValueError("AKShare returned an empty index frame")
 
-    required_cn = {"日期", "开盘", "收盘", "最高", "最低"}
-    missing = required_cn - set(raw.columns)
+    out = raw.rename(columns={k: v for k, v in AKSHARE_INDEX_COLUMN_MAP.items() if k in raw.columns}).copy()
+    required = {"date", "open", "close", "high", "low"}
+    missing = required - set(out.columns)
     if missing:
         raise ValueError(f"AKShare index schema missing columns: {sorted(missing)}")
 
-    out = raw.rename(columns={k: v for k, v in AKSHARE_INDEX_COLUMN_MAP.items() if k in raw.columns}).copy()
     out["date"] = pd.to_datetime(out["date"], errors="raise").dt.normalize()
+    if start_date is not None:
+        out = out.loc[out["date"] >= pd.to_datetime(start_date, format="%Y%m%d")].copy()
+    if end_date is not None:
+        out = out.loc[out["date"] <= pd.to_datetime(end_date, format="%Y%m%d")].copy()
+    if out.empty:
+        raise ValueError("AKShare frame is empty after requested date filtering")
 
     numeric_cols = [
         c
@@ -124,18 +137,46 @@ def normalize_akshare_index_frame(raw: pd.DataFrame, *, symbol: str) -> pd.DataF
     return out[preferred]
 
 
+def _retry_call(
+    fn: Callable[[], pd.DataFrame],
+    *,
+    retries: int,
+    retry_sleep_seconds: float,
+) -> pd.DataFrame:
+    last_exc: Exception | None = None
+    for attempt in range(retries):
+        try:
+            result = fn()
+            if result is None or result.empty:
+                raise ValueError("provider returned empty dataframe")
+            return result
+        except Exception as exc:  # pragma: no cover - upstream network behavior
+            last_exc = exc
+            if attempt + 1 < retries:
+                time.sleep(retry_sleep_seconds * (attempt + 1))
+    raise RuntimeError(f"provider failed after {retries} attempts") from last_exc
+
+
 def fetch_akshare_index(
     *,
     symbol: str = "000001",
     start_date: str = "19901219",
     end_date: str = "22220101",
-    retries: int = 3,
-    retry_sleep_seconds: float = 2.0,
+    retries: int = 2,
+    retry_sleep_seconds: float = 1.5,
 ) -> tuple[pd.DataFrame, DataManifest]:
-    """Fetch one A-share index with AKShare and return normalized data + provenance.
+    """Fetch one A-share index through a deterministic AKShare provider chain.
 
-    AKShare is imported lazily so the core research package does not require the
-    network/data dependency. The dependency is pinned in the ``data`` extra.
+    Provider order is frozen for this adapter version:
+
+    1. ``stock_zh_index_daily_em`` — Eastmoney, direct market-qualified symbol;
+    2. ``stock_zh_index_daily`` — Sina;
+    3. ``stock_zh_index_daily_tx`` — Tencent;
+    4. ``index_zh_a_hist`` — Eastmoney code-map interface, last resort.
+
+    The first provider that returns a valid normalized frame wins. The actual
+    provider is written to the manifest. This avoids making the statistical
+    experiment depend on one brittle upstream discovery endpoint.
     """
     if retries < 1:
         raise ValueError("retries must be >= 1")
@@ -145,40 +186,71 @@ def fetch_akshare_index(
     except ImportError as exc:  # pragma: no cover - environment dependent
         raise RuntimeError("AKShare is not installed; use `pip install -e '.[data]'`") from exc
 
-    last_exc: Exception | None = None
-    raw: pd.DataFrame | None = None
-    for attempt in range(retries):
-        try:
-            raw = ak.index_zh_a_hist(
+    market_symbol = f"sh{symbol}"
+    providers: list[tuple[str, str, Callable[[], pd.DataFrame]]] = [
+        (
+            "AKShare / Eastmoney direct index history",
+            "ak.stock_zh_index_daily_em",
+            lambda: ak.stock_zh_index_daily_em(
+                symbol=market_symbol,
+                start_date=start_date,
+                end_date=end_date,
+            ),
+        ),
+        (
+            "AKShare / Sina index history",
+            "ak.stock_zh_index_daily",
+            lambda: ak.stock_zh_index_daily(symbol=market_symbol),
+        ),
+        (
+            "AKShare / Tencent index history",
+            "ak.stock_zh_index_daily_tx",
+            lambda: ak.stock_zh_index_daily_tx(symbol=market_symbol),
+        ),
+        (
+            "AKShare / Eastmoney mapped index history",
+            "ak.index_zh_a_hist",
+            lambda: ak.index_zh_a_hist(
                 symbol=symbol,
                 period="daily",
                 start_date=start_date,
                 end_date=end_date,
+            ),
+        ),
+    ]
+
+    errors: list[str] = []
+    for source, method, call in providers:
+        try:
+            raw = _retry_call(
+                call,
+                retries=retries,
+                retry_sleep_seconds=retry_sleep_seconds,
             )
-            break
+            frame = normalize_akshare_index_frame(
+                raw,
+                symbol=symbol,
+                start_date=start_date,
+                end_date=end_date,
+            )
         except Exception as exc:  # pragma: no cover - upstream network behavior
-            last_exc = exc
-            if attempt + 1 < retries:
-                time.sleep(retry_sleep_seconds * (attempt + 1))
+            errors.append(f"{method}: {type(exc).__name__}: {exc}")
+            continue
 
-    if raw is None:
-        raise RuntimeError(f"AKShare index_zh_a_hist failed after {retries} attempts") from last_exc
+        manifest = DataManifest(
+            source=source,
+            source_method=method,
+            source_version=str(getattr(ak, "__version__", "unknown")),
+            symbol=symbol,
+            requested_start=start_date,
+            requested_end=end_date,
+            fetched_at_utc=datetime.now(timezone.utc).isoformat(),
+            rows=int(len(frame)),
+            first_date=frame["date"].min().strftime("%Y-%m-%d"),
+            last_date=frame["date"].max().strftime("%Y-%m-%d"),
+            canonical_sha256=canonical_frame_sha256(frame),
+        )
+        return frame, manifest
 
-    frame = normalize_akshare_index_frame(raw, symbol=symbol)
-    if frame.empty:
-        raise RuntimeError("normalized AKShare index frame is empty")
-
-    manifest = DataManifest(
-        source="AKShare / Eastmoney upstream",
-        source_method="ak.index_zh_a_hist",
-        source_version=str(getattr(ak, "__version__", "unknown")),
-        symbol=symbol,
-        requested_start=start_date,
-        requested_end=end_date,
-        fetched_at_utc=datetime.now(timezone.utc).isoformat(),
-        rows=int(len(frame)),
-        first_date=frame["date"].min().strftime("%Y-%m-%d"),
-        last_date=frame["date"].max().strftime("%Y-%m-%d"),
-        canonical_sha256=canonical_frame_sha256(frame),
-    )
-    return frame, manifest
+    detail = " | ".join(errors)
+    raise RuntimeError(f"all AKShare index providers failed: {detail}")
