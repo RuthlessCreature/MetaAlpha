@@ -1,10 +1,6 @@
 name: ZIPING_FWD_001 Forward Test
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/forward-ziping.yml'
   schedule:
     # 08:00 Asia/Shanghai, Monday-Friday. A delayed run after 09:25 is
     # automatically marked ineligible by the signal record itself.
@@ -34,39 +30,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  bootstrap:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install
-        run: pip install -e .
-      - name: Precommit first forward record for 2026-08-17
-        run: |
-          OUT='forward/ZIPING_FWD_001/signals/2026-08-17.json'
-          if [ -e "$OUT" ]; then
-            echo "Signal already exists; refusing to overwrite and treating bootstrap as idempotent."
-            exit 0
-          fi
-          python -m metaalpha.forward_ziping signal --date 2026-08-17 --out "$OUT"
-      - name: Commit immutable precommit
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add forward/ZIPING_FWD_001/signals/2026-08-17.json
-          if git diff --cached --quiet; then
-            echo 'Nothing new to commit.'
-            exit 0
-          fi
-          git commit -m 'forward: precommit ZIPING_FWD_001 2026-08-17'
-          git pull --rebase origin main
-          git push origin HEAD:main
-
   signal:
     if: >-
       (github.event_name == 'schedule' && github.event.schedule == '0 0 * * 1-5') ||
