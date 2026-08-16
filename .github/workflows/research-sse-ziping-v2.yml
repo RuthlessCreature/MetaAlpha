@@ -1,0 +1,47 @@
+name: SSE Ziping V2 Use-Change Exploration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-sse-ziping-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research dependencies
+        run: pip install -e '.[data]'
+      - name: Run ZIPING_V2_001 on pinned Sina history
+        run: >-
+          python -m metaalpha.research_ziping_v2
+          --fetch-akshare
+          --provider sina
+          --symbol 000001
+          --start 19901219
+          --end 20260814
+          --out reports/sse_ziping_v2_exploratory
+          --min-n 100
+      - name: Show evidence status and provenance
+        if: success()
+        run: |
+          cat reports/sse_ziping_v2_exploratory/SUMMARY.md
+          cat reports/sse_ziping_v2_exploratory/run_metadata.json
+          cat reports/sse_ziping_v2_exploratory/data_manifest.json
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sse-ziping-v2-${{ github.sha }}
+          path: reports/sse_ziping_v2_exploratory
+          if-no-files-found: warn
+          retention-days: 30
