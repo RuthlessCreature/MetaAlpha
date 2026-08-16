@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -58,3 +60,42 @@ def add_forward_labels(
             out[f"vol_fwd_{h}"] = out["ret_1"].rolling(h, min_periods=h).std().shift(-h)
 
     return out
+
+
+def target_forward_horizon(target: str) -> int:
+    """Return how many future sessions a registered target consumes."""
+    if target in {"dir_fwd_1", "extreme_loss_fwd_1"}:
+        return 1
+    match = re.fullmatch(r"(?:ret|vol)_fwd_(\d+)", target)
+    if not match:
+        raise ValueError(f"unknown forward target horizon: {target}")
+    horizon = int(match.group(1))
+    if horizon <= 0:
+        raise ValueError("forward horizon must be positive")
+    return horizon
+
+
+def purge_forward_boundary(
+    df: pd.DataFrame,
+    *,
+    target: str,
+    group_col: str | None = "symbol",
+) -> pd.DataFrame:
+    """Remove rows whose target window extends beyond the current partition.
+
+    Labels are commonly calculated on the full time series before chronological
+    partitioning. Without purging, the last ``h`` rows of an earlier partition
+    can consume outcomes from the next partition. This helper removes those
+    rows separately within each symbol.
+    """
+    horizon = target_forward_horizon(target)
+    out = df.copy()
+    if out.empty:
+        return out
+
+    if group_col and group_col in out.columns:
+        from_end = out.groupby(group_col, sort=False).cumcount(ascending=False)
+        return out.loc[from_end >= horizon].copy()
+    if len(out) <= horizon:
+        return out.iloc[0:0].copy()
+    return out.iloc[:-horizon].copy()
