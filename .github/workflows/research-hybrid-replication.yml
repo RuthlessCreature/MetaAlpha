@@ -1,0 +1,40 @@
+name: HYBRID_REPL_001 Cross-index Replication
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-hybrid-replication.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research dependencies
+        run: pip install -e '.[data]'
+      - name: Run preregistered HYBRID_REPL_001
+        run: >-
+          python -m metaalpha.research_hybrid_replication
+          --out reports/hybrid_replication_001
+      - name: Show replication decision and provenance
+        if: success()
+        run: |
+          cat reports/hybrid_replication_001/SUMMARY.md
+          cat reports/hybrid_replication_001/run_metadata.json
+      - name: Upload replication artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hybrid-repl-${{ github.sha }}
+          path: reports/hybrid_replication_001
+          if-no-files-found: warn
+          retention-days: 30
