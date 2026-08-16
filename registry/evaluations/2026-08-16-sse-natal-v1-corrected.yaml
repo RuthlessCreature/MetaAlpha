@@ -1,0 +1,52 @@
+schema_version: 1
+evaluation_id: SSE_NATAL_V1_CORRECTED_20260816
+evaluated_at: 2026-08-16
+workflow_run_id: 31939815944
+artifact_id: 9261714991
+artifact_sha256: fdab1036e3de6b97a2f5f29131e14fbf73a2c9fba78a5da92959821eb35d6c50
+evidence_status: historical_exploratory_only
+methodology:
+  provider: sina
+  source_method: ak.stock_zh_index_daily
+  source_version: 1.18.84
+  data_sha256: 697af81a200060d42b04fa7a79b92fb8287e709ae10baf0825ae301fb4af5aa1
+  label_rule: strictly_future_only
+  era_boundary: purge_target_horizon_rows
+  inference: OLS_HAC_Newey_West
+  hac_maxlags:
+    ret_fwd_1: 5
+    vol_fwd_5: 20
+  controls:
+    fake_natal_offsets_calendar_days: [17, 31, 47]
+    shifted_sessions: [17, 31, 47]
+natal_anchor:
+  id: SSE_NATAL_V1
+  datetime: 1990-12-19T11:00:00+08:00
+  calculated_pillars: 庚午 戊子 戊午 戊午
+decisions:
+  - hypothesis_id: SSE_NATAL_001
+    decision: no_historical_return_candidate
+    full_history_real_min_family_fdr: 0.1422762531
+    note: No real-natal return family passes family-wide FDR in any historical era.
+  - hypothesis_id: SSE_NATAL_002
+    decision: historical_cycle_association_present_natal_specificity_rejected
+    full_history_real_min_family_fdr: 0.00008448160049
+    full_history_fake_min_family_fdr: 0.0009171748711
+    full_history_shift_min_family_fdr: 0.04459772698
+    leading_real_feature:
+      feature: natal_transit__v1__branch_break_count
+      level: 6
+      n: 156
+      mean_target: 0.010214
+      rest_mean: 0.014404
+      effect_std: -0.2463314156
+      hac_t: -4.791365
+    specificity_failures:
+      - real family non-significant in 1990-2004 while fake and shifted controls are significant
+      - fake and shifted controls materially stronger than real family in 2005-2014
+      - shifted controls stronger than real family in 2015-2020
+      - real family non-significant in 2021-2026 while shifted control remains significant
+next_gate:
+  - deprioritize_sse_natal_anchor_tuning
+  - test_direct_ganzhi_solar_term_calendar_cycle_volatility
+  - require_same_corrected_inference_and_null_competition
