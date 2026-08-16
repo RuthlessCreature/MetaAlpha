@@ -1,0 +1,35 @@
+schema_version: 1
+errata_id: METHODOLOGY_ERRATA_20260816
+status: active
+discovered_at: 2026-08-16
+issues:
+  - id: forward_volatility_label_misalignment
+    severity: critical
+    affected_targets: [vol_fwd_5, vol_fwd_20]
+    consequence: Prior volatility-target p-values, FDR values and effect interpretations are invalidated.
+  - id: iid_inference_for_time_series
+    severity: high
+    affected_targets: [ret_fwd_1, vol_fwd_5, vol_fwd_20]
+    consequence: Earlier Welch-IID inferential p-values are superseded by HAC reanalysis.
+  - id: unpurged_partition_tail
+    severity: high
+    affected_targets: [ret_fwd_1, vol_fwd_5, vol_fwd_20]
+    consequence: Earlier partition-edge rows could consume outcomes beyond the named partition boundary.
+affected_evaluations:
+  - path: registry/evaluations/2026-08-16-sse-ziping-v1.yaml
+    status: superseded_pending_corrected_reanalysis
+    specifically_invalidated_hypotheses: [ZIPING_002, ZIPING_004]
+  - path: registry/evaluations/2026-08-16-sse-natal-v1-exploratory.yaml
+    status: superseded_pending_corrected_reanalysis
+    specifically_invalidated_hypotheses: [SSE_NATAL_002]
+correction_protocol:
+  canonical_provider: sina
+  provider_method: ak.stock_zh_index_daily
+  vol_label: strictly_t_plus_1_through_t_plus_h
+  partition_boundary: purge_target_horizon_rows
+  inference: OLS_HAC_Newey_West
+  hac_maxlags:
+    ret_fwd_1: 5
+    vol_fwd_5: 20
+  multiple_testing: BH_FDR_across_registered_family
+  holdout_policy: previously exposed intervals remain burned/exploratory
