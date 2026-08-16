@@ -19,8 +19,14 @@ jobs:
         run: pip install -e '.[dev]'
       - name: Test
         run: pytest -q
-      - name: Audit META_FWD_001 immutable ledger
+      - name: Audit META_FWD_001 immutable prediction ledger
         run: |
           python -m metaalpha.forward_audit \
+            --predictions-dir forward/META_FWD_001/predictions \
+            --repo-root .
+      - name: Audit META_FWD_001 immutable realized ledger
+        run: |
+          python -m metaalpha.forward_realized_audit \
+            --realized-dir forward/META_FWD_001/realized \
             --predictions-dir forward/META_FWD_001/predictions \
             --repo-root .
