@@ -1,0 +1,47 @@
+name: Direct Ganzhi Solar-Term Volatility Exploration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-ganzhi-vol.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research dependencies
+        run: pip install -e '.[data]'
+      - name: Run GANZHI_VOL_001 on pinned Sina history
+        run: >-
+          python -m metaalpha.research_ganzhi_vol
+          --fetch-akshare
+          --provider sina
+          --symbol 000001
+          --start 19901219
+          --end 20260814
+          --out reports/ganzhi_vol_exploratory
+      - name: Show evidence status and provenance
+        if: success()
+        run: |
+          cat reports/ganzhi_vol_exploratory/SUMMARY.md
+          cat reports/ganzhi_vol_exploratory/run_metadata.json
+          cat reports/ganzhi_vol_exploratory/data_manifest.json
+          cat reports/ganzhi_vol_exploratory/invalid_inference_tests.csv
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ganzhi-vol-${{ github.sha }}
+          path: reports/ganzhi_vol_exploratory
+          if-no-files-found: warn
+          retention-days: 30
