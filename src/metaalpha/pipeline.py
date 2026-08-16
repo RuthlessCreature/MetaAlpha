@@ -10,6 +10,7 @@ from .controls import add_deterministic_null_controls
 from .ganzhi import add_ganzhi_features
 from .labels import add_forward_labels
 from .validation import evaluate_categorical_feature
+from .zpzt_state import add_ziping_state_features
 
 
 def build_dataset(df: pd.DataFrame, include_ziping: bool = False) -> pd.DataFrame:
@@ -25,6 +26,7 @@ def build_dataset(df: pd.DataFrame, include_ziping: bool = False) -> pd.DataFram
     if include_ziping:
         out = add_ganzhi_features(out)
         out = add_ziping_features(out)
+        out = add_ziping_state_features(out)
     out = add_deterministic_null_controls(out)
     out = add_forward_labels(out)
     return out
@@ -36,6 +38,7 @@ def run_screen(df: pd.DataFrame, target: str = "ret_fwd_1") -> pd.DataFrame:
         "control__v1__random_",
         "ganzhi__v2__",
         "zpzt__v1__",
+        "zpzt_state__v1__",
     )
     feature_cols = [c for c in df.columns if c.startswith(prefixes)]
     reports = []
@@ -57,7 +60,7 @@ def main() -> None:
     parser.add_argument(
         "--ziping",
         action="store_true",
-        help="enable v0.2 Ganzhi + Ziping Zhenquan feature engines",
+        help="enable Ganzhi + Ziping Zhenquan primitive and 成败救应 state features",
     )
     args = parser.parse_args()
 
