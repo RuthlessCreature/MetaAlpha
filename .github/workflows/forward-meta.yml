@@ -1,0 +1,120 @@
+name: META_FWD_001 Future Branch Tournament
+
+on:
+  schedule:
+    # 08:10 Asia/Shanghai, Monday-Friday. A delayed run after 09:25 remains
+    # auditable but is automatically ineligible.
+    - cron: '10 0 * * 1-5'
+    # 16:40 Asia/Shanghai, Monday-Friday.
+    - cron: '40 8 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'prediction or score'
+        required: true
+        default: 'prediction'
+        type: choice
+        options:
+          - prediction
+          - score
+      date:
+        description: 'Prediction date YYYY-MM-DD; blank uses current Shanghai date'
+        required: false
+        type: string
+  # One-time bootstrap: creation of this workflow precommits 2026-08-17.
+  # Removed after the first record is verified.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/forward-meta.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: meta-fwd-001
+  cancel-in-progress: false
+
+jobs:
+  prediction:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'schedule' && github.event.schedule == '10 0 * * 1-5') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'prediction')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install data dependencies
+        run: pip install -e '.[data]'
+      - name: Resolve target date and generate immutable tournament record
+        id: generate
+        shell: bash
+        run: |
+          if [ '${{ github.event_name }}' = 'push' ]; then
+            DATE='2026-08-17'
+          else
+            DATE='${{ inputs.date }}'
+            if [ -z "$DATE" ]; then
+              DATE=$(TZ=Asia/Shanghai date +%F)
+            fi
+          fi
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          OUT="forward/META_FWD_001/predictions/${DATE}.json"
+          if [ -e "$OUT" ]; then
+            echo "Tournament prediction already exists; refusing overwrite."
+            exit 0
+          fi
+          python -m metaalpha.forward_meta signal --date "$DATE" --out "$OUT"
+      - name: Commit immutable tournament prediction
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add forward/META_FWD_001/predictions/
+          if git diff --cached --quiet; then
+            echo 'Nothing new to commit.'
+            exit 0
+          fi
+          git commit -m "forward: precommit META_FWD_001 ${{ steps.generate.outputs.date }}"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+  score:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '40 8 * * 1-5') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'score')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install data dependencies
+        run: pip install -e '.[data]'
+      - name: Settle realized tournament predictions
+        run: |
+          END=$(TZ=Asia/Shanghai date +%Y%m%d)
+          python -m metaalpha.forward_meta score \
+            --predictions-dir forward/META_FWD_001/predictions \
+            --out-dir forward/META_FWD_001/status \
+            --end "$END"
+      - name: Commit status and one-time gate if created
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add forward/META_FWD_001/status/
+          if git diff --cached --quiet; then
+            echo 'No status change to commit.'
+            exit 0
+          fi
+          git commit -m 'forward: update META_FWD_001 realized status'
+          git pull --rebase origin main
+          git push origin HEAD:main
