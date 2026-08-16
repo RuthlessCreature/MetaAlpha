@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -95,3 +95,82 @@ def evaluate_categorical_feature(
         result["p_fdr_bh"] = benjamini_hochberg(result["p_value"])
         result = result.sort_values(["p_fdr_bh", "p_value"]).reset_index(drop=True)
     return result
+
+
+def evaluate_categorical_family(
+    df: pd.DataFrame,
+    features: Sequence[str],
+    target: str,
+    *,
+    family_name: str,
+    min_n: int = 30,
+) -> pd.DataFrame:
+    """Evaluate a preregistered feature family with one FDR correction across all tests.
+
+    Applying BH separately to each feature understates the multiplicity of a
+    multi-feature hypothesis. This function deliberately recomputes FDR across
+    every tested level in the registered family.
+    """
+    missing = [f for f in features if f not in df.columns]
+    if missing:
+        raise ValueError(f"missing registered features for {family_name}: {missing}")
+
+    parts: list[pd.DataFrame] = []
+    for feature in features:
+        r = evaluate_categorical_feature(df, feature, target, min_n=min_n)
+        if not r.empty:
+            r = r.drop(columns=["p_fdr_bh"], errors="ignore")
+            parts.append(r)
+
+    if not parts:
+        return pd.DataFrame()
+
+    out = pd.concat(parts, ignore_index=True)
+    out["family"] = family_name
+    out["p_fdr_bh_family"] = benjamini_hochberg(out["p_value"])
+    return out.sort_values(["p_fdr_bh_family", "p_value"]).reset_index(drop=True)
+
+
+def walk_forward_categorical_stability(
+    df: pd.DataFrame,
+    *,
+    feature: str,
+    target: str,
+    min_train: int = 1000,
+    test_size: int = 250,
+    min_n: int = 15,
+) -> pd.DataFrame:
+    """Measure a frozen categorical feature on successive future-only test blocks.
+
+    This is a stability diagnostic, not a model-tuning loop. The rule and level
+    definitions are frozen before the folds are inspected. No test observation
+    is used to construct an earlier fold.
+    """
+    if feature not in df.columns or target not in df.columns:
+        raise ValueError("feature and target must exist in dataframe")
+
+    ordered = df.sort_values("date").reset_index(drop=True) if "date" in df.columns else df.reset_index(drop=True)
+    if len(ordered) < min_train + test_size:
+        return pd.DataFrame()
+
+    rows: list[pd.DataFrame] = []
+    for fold, split in enumerate(
+        expanding_walk_forward_splits(len(ordered), min_train=min_train, test_size=test_size),
+        start=1,
+    ):
+        test = ordered.iloc[split.test_start:split.test_end]
+        r = evaluate_categorical_feature(test, feature, target, min_n=min_n)
+        if r.empty:
+            continue
+        r = r.drop(columns=["p_fdr_bh"], errors="ignore")
+        r.insert(0, "fold", fold)
+        r["test_start_row"] = split.test_start
+        r["test_end_row"] = split.test_end
+        if "date" in test.columns:
+            r["test_first_date"] = pd.to_datetime(test["date"]).min().strftime("%Y-%m-%d")
+            r["test_last_date"] = pd.to_datetime(test["date"]).max().strftime("%Y-%m-%d")
+        rows.append(r)
+
+    if not rows:
+        return pd.DataFrame()
+    return pd.concat(rows, ignore_index=True)
