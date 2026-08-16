@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metaalpha"
-version = "0.1.0a0"
+version = "0.2.0a0"
 description = "Falsifiable research framework for symbolic temporal factors and A-share markets"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,6 +13,7 @@ dependencies = [
   "pandas>=2.0",
   "PyYAML>=6.0",
   "scipy>=1.10",
+  "lunar_python==1.4.8",
 ]
 
 [project.optional-dependencies]
