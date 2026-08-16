@@ -1,0 +1,40 @@
+name: SSE Ziping First Experiment
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-sse.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research dependencies
+        run: pip install -e '.[data]'
+      - name: Fetch SSE data and run preregistered experiment
+        run: >-
+          metaalpha-ziping-sse
+          --fetch-akshare
+          --symbol 000001
+          --start 19901219
+          --end 20260816
+          --out reports/sse_ziping_first
+          --min-n 100
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sse-ziping-first-${{ github.sha }}
+          path: reports/sse_ziping_first
+          if-no-files-found: warn
+          retention-days: 30
