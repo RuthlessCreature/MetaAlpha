@@ -1,0 +1,13 @@
+{
+  "canonical_sha256": "0afbd374475e11113a12a9e63323ca6b9a579cd036677bfbf823b2d86c1cb2f0",
+  "fetched_at_utc": "2026-08-17T09:06:05.319361+00:00",
+  "first_date": "2026-08-03",
+  "last_date": "2026-08-14",
+  "requested_end": "20260817",
+  "requested_start": "20260801",
+  "rows": 10,
+  "source": "AKShare / Sina index history",
+  "source_method": "ak.stock_zh_index_daily",
+  "source_version": "1.18.84",
+  "symbol": "000001"
+}
