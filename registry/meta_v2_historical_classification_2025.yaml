@@ -1,0 +1,54 @@
+classification_id: META_V2_HISTORICAL_CLASSIFICATION_2025_001
+as_of: 2026-08-18
+scope: retrospective evidence through 2026-08-17
+prospective_override: false
+note: >-
+  These classifications summarize historical diagnostics only. They do not alter
+  or stop META_FWD_001, whose prospective family remains frozen and active.
+branches:
+  meihua_time_v1:
+    historical_class: HISTORICAL_FAILURE
+    evidence:
+      - worse than ordinary baseline on 2025+ LogLoss/Brier
+      - 0th percentile versus both sparse and dense shifted-state null families
+      - 248/248 dense shifts beat the exact alignment on LogLoss
+    action: no in-place rescue; new representation requires new feature version
+  qimen_v1:
+    historical_class: NO_INCREMENT_UNSTABLE
+    evidence:
+      - weak fixed-fit improvement only
+      - regime interaction worsened losses
+      - dense-shift exact-alignment percentile about 65.7%
+    action: deprioritize; no rule changes under current version
+  cycle_v1:
+    historical_class: GENERIC_TEMPORAL_ENCODING_CANDIDATE
+    evidence:
+      - small historical baseline improvements in some specifications
+      - rich Gregorian controls eliminate absolute full-period advantage
+      - dense-shift exact-alignment percentile about 88.7%, with 28 shifted copies stronger
+      - cross-index HYBRID_REPL_001 pass count 0/4
+    action: treat as temporal encoding unless future evidence proves specificity
+  ziping_current_structural_block:
+    historical_class: WEAK_RESIDUAL_NO_ALIGNMENT_SPECIFICITY
+    evidence:
+      - small 2025+ fixed-fit improvement versus ordinary baseline
+      - residual absolute improvement remains after rich Gregorian stress but shrinks materially
+      - dense-shift exact-alignment percentile about 87.1%, with 32 shifted copies stronger
+      - current static regime interaction worsened versus main effect
+      - cross-index HYBRID_REPL_001 pass count 0/4 for historical nominated Ziping block
+    action: retain only as a weak candidate; no traditional-uniqueness claim
+  liuyao_hash_v1:
+    historical_class: NEGATIVE_CONTROL_CURRENTLY_STRONG
+    evidence:
+      - best LogLoss among META_HIST_2025_001 fixed-fit models
+      - retains absolute improvement after rich Gregorian stress
+    action: >-
+      never interpret traditionally; use as falsification control and benchmark for generic
+      deterministic date encoding. Await 100-seed ensemble to determine whether its win is lucky.
+scientific_track_S_current_statement: >-
+  No current v1 traditional mapping has demonstrated exact-date alignment specificity over
+  matched displaced copies. Historical evidence supports deterministic temporal partitioning
+  more strongly than a unique traditional mapping claim.
+trading_track_T_current_statement: >-
+  Some deterministic time encodings improve historical probability losses in selected periods,
+  but stability, cross-market replication and adaptive routing remain inadequate for promotion.
