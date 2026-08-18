@@ -1,0 +1,8 @@
+{
+  "experiment_id": "META_DENSE_SHIFT_NULL_2025_001",
+  "status": "RETROSPECTIVE_DESCRIPTIVE",
+  "fixed_C": 0.01,
+  "shift_min": 5,
+  "shift_max": 252,
+  "nulls_per_branch": 248
+}
