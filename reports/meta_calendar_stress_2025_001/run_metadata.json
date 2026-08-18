@@ -1,0 +1,20 @@
+{
+  "experiment_id": "META_CALENDAR_STRESS_2025_001",
+  "status": "RETROSPECTIVE_DESCRIPTIVE",
+  "train_rows": 8291,
+  "test_rows": 393,
+  "calendar_categorical": [
+    "cal_day_of_month",
+    "cal_iso_week",
+    "cal_quarter"
+  ],
+  "calendar_continuous": [
+    "cal_days_to_month_end",
+    "cal_annual_sin_1",
+    "cal_annual_cos_1",
+    "cal_annual_sin_2",
+    "cal_annual_cos_2",
+    "cal_annual_sin_3",
+    "cal_annual_cos_3"
+  ]
+}
