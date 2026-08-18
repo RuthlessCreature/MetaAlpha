@@ -1,0 +1,23 @@
+{
+  "hypothesis_id": "META_HIST_2025_001",
+  "status": "RETROSPECTIVE_DESCRIPTIVE",
+  "test_start": "2025-01-01",
+  "test_end": "2026-08-17",
+  "train_last_date": "2024-12-31",
+  "training_rows": 8291,
+  "test_rows": 393,
+  "models": [
+    "baseline",
+    "cycle",
+    "ziping",
+    "qimen",
+    "meihua",
+    "liuyao_hash"
+  ],
+  "negative_controls": [
+    "liuyao_hash"
+  ],
+  "bootstrap_block": 20,
+  "bootstrap_repetitions": 2000,
+  "note": "Historical diagnostic only; candidate family selection postdates these outcomes."
+}

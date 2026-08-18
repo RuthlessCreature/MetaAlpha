@@ -1,0 +1,7 @@
+model_id,best_C,train_n,test_n
+baseline,0.01,8291,393
+cycle,0.01,8291,393
+ziping,0.01,8291,393
+qimen,0.01,8291,393
+meihua,0.01,8291,393
+liuyao_hash,0.01,8291,393
