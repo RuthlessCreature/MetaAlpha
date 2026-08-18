@@ -1,0 +1,44 @@
+name: META_SHIFT_NULL_2025_001 Shifted-State Null Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-meta-shift-null-2025.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install frozen META runtime
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - name: Run shifted-state matched null diagnostic
+        run: >-
+          python -m metaalpha.research_meta_shift_null_2025
+          --provider sina
+          --symbol 000001
+          --raw-start 19901219
+          --test-start 20250101
+          --end 20260817
+          --out reports/meta_shift_null_2025_001
+      - name: Commit report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/meta_shift_null_2025_001/
+          git commit -m 'research: record META_SHIFT_NULL_2025_001 results'
+          git pull --rebase origin main
+          git push origin HEAD:main
