@@ -1,0 +1,48 @@
+name: META_ROUTER_ROLLING_2025_001 Rolling-window online routers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-meta-router-rolling-2025.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install frozen META runtime
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - name: Run rolling-window routers
+        run: >-
+          python -m metaalpha.research_meta_router_rolling_2025
+          --predictions reports/meta_hist_2025_001/predictions.csv
+          --out reports/meta_router_rolling_2025_001
+      - name: Show summary
+        if: success()
+        run: cat reports/meta_router_rolling_2025_001/SUMMARY.md
+      - name: Commit retrospective report
+        if: success()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/meta_router_rolling_2025_001/
+          if git diff --cached --quiet; then
+            echo 'No report change.'
+            exit 0
+          fi
+          git commit -m 'research: record META_ROUTER_ROLLING_2025_001 results'
+          git pull --rebase origin main
+          git push origin HEAD:main
