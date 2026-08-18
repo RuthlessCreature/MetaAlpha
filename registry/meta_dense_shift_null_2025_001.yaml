@@ -25,13 +25,17 @@ primary:
   - actual_logloss_improvement_vs_baseline
   - actual_brier_improvement_vs_baseline
   - actual_percentile_among_248_shifts
-  - empirical_one_sided_p_with_plus_one_correction
+  - empirical_rank_tail_fraction_with_plus_one_correction
 interpretation: >-
-  This is a retrospective specificity test. A high percentile indicates that the
-  exact traditional date alignment is unusual relative to displaced copies of the
-  same state process. It is not prospective validation and does not alter META_FWD_001.
+  This is a retrospective phase-specificity diagnostic. A high percentile indicates
+  that the exact traditional date alignment is unusual relative to displaced copies
+  of the same state process. The 248 shifts are strongly dependent, so the reported
+  tail fraction must NOT be interpreted as a calibrated p-value from 248 independent
+  random null draws. It is a descriptive rank/specificity statistic only. It is not
+  prospective validation and does not alter META_FWD_001.
 constraints:
   no_offset_selection: true
   no_symbolic_rule_changes: true
   fixed_C: true
+  correlated_shift_nulls_not_independent: true
   does_not_modify_META_FWD_001: true
