@@ -1,0 +1,41 @@
+hypothesis_id: META_HIST_EXPANDING_2025_001
+status: RETROSPECTIVE_DESCRIPTIVE
+registered_at: 2026-08-18T11:20:00+08:00
+purpose: >-
+  Reconstruct how the frozen META candidate family would have behaved if run
+  daily from 2025-01-01 with expanding refits. This is retrospective because
+  the candidate family itself was defined after these outcomes existed.
+market:
+  provider: sina
+  symbol: '000001'
+  timezone: Asia/Shanghai
+  anchor: '09:25'
+period:
+  raw_start: '1990-12-19'
+  test_start: '2025-01-01'
+  test_end: '2026-08-17'
+models:
+  baseline: ordinary frozen market/calendar baseline
+  candidates: [cycle, ziping, qimen, meihua]
+  negative_controls: [liuyao_hash]
+procedure:
+  - for each eligible test trading date t, use only rows dated before t
+  - select C independently for each model using the frozen expanding inner-CV rule
+  - refit that model on all eligible rows before t
+  - predict the same-session close-to-close direction for t
+  - append the realized t target only after prediction for scoring
+metrics:
+  primary: [log_loss, brier_score]
+  secondary: [roc_auc, accuracy, calibration_slope, probability_spread_return]
+  diagnostics:
+    - cumulative_logloss_improvement_vs_baseline
+    - rolling_20_logloss_improvement_vs_baseline
+    - rolling_60_logloss_improvement_vs_baseline
+    - rolling_120_logloss_improvement_vs_baseline
+    - calendar_year_metrics
+    - calendar_month_metrics
+    - selected_C_frequency
+interpretation_rules:
+  - nothing here changes META_FWD_001
+  - liuyao_hash outperforming traditional branches is negative evidence for a symbolic interpretation
+  - regime-specific gains are descriptive and motivate a new hypothesis ID rather than post-hoc edits
