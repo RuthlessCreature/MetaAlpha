@@ -1,0 +1,46 @@
+policy_id: META_V2_REJECTED_RESCUE_PATHS_001
+created: 2026-08-18
+purpose: Prevent retrospective narrative rescue after historical failures.
+rejected_or_deprioritized:
+  - id: SSE_NATAL_ANCHOR_RESCUE
+    status: REJECTED_AS_UNIQUE_EXPLANATION
+    evidence: >-
+      Corrected SSE_NATAL_V1 historical work found calendar/cycle associations,
+      especially for forward volatility, but the real 1990-12-19 11:00 anchor did
+      not show specificity versus fake natal anchors and shifted controls.
+    rule: >-
+      Do not make market-natal-chart relations the core MetaAlpha v2 architecture.
+      Any future natal-specific experiment requires a new ID and identical fake-anchor controls.
+  - id: MEIHUA_TIME_V1_IN_PLACE_TUNING
+    status: FORBIDDEN
+    evidence: >-
+      2025+ historical diagnostics materially worsened primary losses and the actual
+      date alignment landed at the bottom of shifted-state controls.
+    rule: >-
+      MEIHUA_TIME_V1 remains frozen. Any alternative Meihua operationalization must
+      use a new feature version and cannot reinterpret TIME_V1 failure.
+  - id: SCHOOL_SHOPPING_AFTER_OUTCOMES
+    status: FORBIDDEN
+    rule: >-
+      Do not add or remove schools from an existing confirmatory family based on observed outcomes.
+  - id: GENERAL_FACTOR_CLAIM_FROM_SSE_ONLY
+    status: REJECTED
+    evidence: >-
+      HYBRID_REPL_001 produced 0/4 replication passes for historical SSE cycle/Ziping winners.
+    rule: >-
+      Any surviving SSE effect is market-specific until independently replicated.
+  - id: BASELINE_ONLY_COMPARISON
+    status: INSUFFICIENT
+    evidence: >-
+      Hash-derived and shifted-state controls can match or beat traditional mappings.
+    rule: >-
+      Traditional uniqueness requires matched-null comparison, not only beating an ordinary market baseline.
+allowed_next_directions:
+  - ordinary-market regime conditioning followed by symbolic incremental tests
+  - matched null families with identical model capacity and persistence structure
+  - deterministic time-encoding Track T without metaphysical interpretation
+  - primitive/relational symbolic representations only under a new version and predeclared nulls
+protected_experiments:
+  - META_FWD_001
+  - HYBRID_FWD_001
+  - ZIPING_FWD_001
