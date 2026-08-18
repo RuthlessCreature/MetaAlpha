@@ -115,6 +115,7 @@ def main() -> None:
     parser.add_argument("--raw-start", default=DEFAULT_RAW_START)
     parser.add_argument("--test-start", default=DEFAULT_TEST_START)
     parser.add_argument("--end", default=DEFAULT_END)
+    parser.add_argument("--input-csv", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--manifest-out", type=Path)
     parser.add_argument("--fixed-c", type=float)
@@ -122,12 +123,18 @@ def main() -> None:
     parser.add_argument("--chunk-count", type=int, default=1)
     args = parser.parse_args()
 
-    raw, manifest = fetch_akshare_index(
-        symbol=args.symbol,
-        start_date=args.raw_start,
-        end_date=args.end,
-        provider=args.provider,
-    )
+    manifest = None
+    if args.input_csv is not None:
+        raw = pd.read_csv(args.input_csv)
+        raw["date"] = pd.to_datetime(raw["date"], errors="raise").dt.normalize()
+    else:
+        raw, manifest = fetch_akshare_index(
+            symbol=args.symbol,
+            start_date=args.raw_start,
+            end_date=args.end,
+            provider=args.provider,
+        )
+
     result = run_worker(
         raw,
         model_id=args.model_id,
@@ -139,7 +146,7 @@ def main() -> None:
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.out, index=False)
-    if args.manifest_out is not None:
+    if args.manifest_out is not None and manifest is not None:
         args.manifest_out.parent.mkdir(parents=True, exist_ok=True)
         args.manifest_out.write_text(manifest.to_json() + "\n", encoding="utf-8")
 
