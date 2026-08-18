@@ -1,0 +1,37 @@
+experiment_id: META_DENSE_SHIFT_NULL_2025_001
+status: RETROSPECTIVE_DESCRIPTIVE
+created: 2026-08-18
+purpose: >-
+  Increase matched-null resolution for traditional joint-state mappings without
+  selecting favorable offsets. Evaluate every integer trading-session shift from
+  5 through 252 inclusive.
+market:
+  provider: sina
+  symbol: '000001'
+  test_start: '20250101'
+  test_end: '20260817'
+model:
+  family: ridge_logistic
+  C: 0.01
+branches: [cycle, ziping, qimen, meihua]
+shift_null:
+  minimum_shift_sessions: 5
+  maximum_shift_sessions: 252
+  count: 248
+  include_every_integer_shift: true
+  joint_state_shift: true
+  identical_model_capacity: true
+primary:
+  - actual_logloss_improvement_vs_baseline
+  - actual_brier_improvement_vs_baseline
+  - actual_percentile_among_248_shifts
+  - empirical_one_sided_p_with_plus_one_correction
+interpretation: >-
+  This is a retrospective specificity test. A high percentile indicates that the
+  exact traditional date alignment is unusual relative to displaced copies of the
+  same state process. It is not prospective validation and does not alter META_FWD_001.
+constraints:
+  no_offset_selection: true
+  no_symbolic_rule_changes: true
+  fixed_C: true
+  does_not_modify_META_FWD_001: true
