@@ -1,0 +1,30 @@
+policy_id: META_V2_FEATURE_MINING_STOP_RULE_001
+created: 2026-08-18
+status: ACTIVE_RESEARCH_GOVERNANCE
+purpose: Prevent post-hoc symbolic feature proliferation while core falsification diagnostics are unresolved.
+no_new_symbolic_feature_versions_until_review_of:
+  - META_HIST_EXPANDING_C001_2025_001
+  - META_HIST_EXPANDING_2025_001
+  - META_SHIFT_NULL_2025_001
+  - META_REGIME_NULL_2025_001
+  - META_ROUTER_2025_001
+  - META_ROUTER_ROLLING_2025_001
+forbidden_during_freeze:
+  - adding new shensha features to rescue losses
+  - changing Meihua interpretation in place
+  - changing Qimen mapping in place
+  - changing Ziping use-god logic in place
+  - adding Nayin or ad-hoc fortune scores after seeing outcomes
+  - selecting a traditional school because it won the latest historical slice
+allowed:
+  - execution/parallelization fixes that preserve experiment definitions
+  - audit/reporting fixes
+  - matched-null controls
+  - market-only baselines and regime diagnostics
+  - past-only Track T routers using already-frozen experts
+  - prospective collection under existing frozen IDs
+review_rule: >-
+  Only after the listed diagnostics are recorded may a new symbolic representation
+  RFC be proposed. Any new representation must receive a new version and matched-null
+  family before its outcomes are evaluated.
+protected_forward_family: META_FWD_001
