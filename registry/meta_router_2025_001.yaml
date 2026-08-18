@@ -1,0 +1,30 @@
+experiment_id: META_ROUTER_2025_001
+status: RETROSPECTIVE_TRACK_T
+created: 2026-08-18
+source_predictions: reports/meta_hist_2025_001/predictions.csv
+period: 2025-01-02..2026-08-17
+purpose: >-
+  Test whether past-only online expert weighting can adapt to regime-dependent
+  performance without predefining symbolic market regimes.
+routers:
+  hedge_all_v1:
+    experts: [baseline, cycle, ziping, qimen, meihua, liuyao_hash]
+  hedge_traditional_v1:
+    experts: [baseline, cycle, ziping, qimen, meihua]
+update:
+  loss: brier
+  initialization: equal_weights
+  eta_t: 'sqrt(2*ln(K)/t)'
+  timing: >-
+    Prediction on session t uses weights entering t. Weights are updated only after
+    session t outcome is realized, so no same-session outcome enters its own prediction.
+evaluation:
+  primary: [log_loss, brier_score]
+  secondary: [roc_auc, accuracy]
+interpretation: >-
+  Track T only. Success supports adaptive deterministic time-state forecasting utility.
+  It does not validate any traditional/metaphysical mapping, especially if synthetic
+  liuyao_hash receives material weight.
+constraints:
+  no_test_period_parameter_tuning: true
+  does_not_modify_META_FWD_001: true
