@@ -16,8 +16,9 @@ jobs:
       fail-fast: false
       matrix:
         model: [baseline, cycle, ziping, qimen, meihua, liuyao_hash]
+        chunk: [0, 1, 2, 3]
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,7 +28,7 @@ jobs:
         run: |
           pip install -r requirements/meta-fwd-001.lock.txt
           pip install -e . --no-deps
-      - name: Run fixed-C expanding worker
+      - name: Run fixed-C expanding worker chunk
         run: >-
           python -m metaalpha.research_meta_expanding_2025_worker
           --model-id '${{ matrix.model }}'
@@ -37,11 +38,13 @@ jobs:
           --test-start 20250101
           --end 20260817
           --fixed-c 0.01
-          --out 'work/${{ matrix.model }}.csv'
-          --manifest-out 'work/manifest_${{ matrix.model }}.json'
+          --chunk-index '${{ matrix.chunk }}'
+          --chunk-count 4
+          --out 'work/${{ matrix.model }}_part${{ matrix.chunk }}.csv'
+          --manifest-out 'work/manifest_${{ matrix.model }}_part${{ matrix.chunk }}.json'
       - uses: actions/upload-artifact@v4
         with:
-          name: meta-expanding-quick-${{ matrix.model }}
+          name: meta-expanding-quick-${{ matrix.model }}-${{ matrix.chunk }}
           path: work/
           retention-days: 7
 
