@@ -28,17 +28,21 @@ BOOTSTRAP_SEED = 20260818
 
 
 def _load_workers(input_dir: Path) -> pd.DataFrame:
+    """Load either one file per model or multiple contiguous chunk files per model."""
     parts: dict[str, pd.DataFrame] = {}
     for model in MODELS:
-        path = input_dir / f"{model}.csv"
-        if not path.exists():
-            raise FileNotFoundError(path)
-        frame = pd.read_csv(path)
+        paths = sorted(input_dir.glob(f"{model}*.csv"))
+        paths = [p for p in paths if not p.name.startswith("manifest_")]
+        if not paths:
+            raise FileNotFoundError(input_dir / f"{model}*.csv")
+        frames = [pd.read_csv(path) for path in paths]
+        frame = pd.concat(frames, ignore_index=True)
         if set(frame["model_id"].unique()) != {model}:
-            raise ValueError(f"worker file {path} has wrong model_id")
+            raise ValueError(f"worker files for {model} have wrong model_id")
         frame["date"] = pd.to_datetime(frame["date"], errors="raise").dt.normalize()
         if frame["date"].duplicated().any():
-            raise ValueError(f"duplicate dates in {path}")
+            dup = frame.loc[frame["date"].duplicated(), "date"].dt.strftime("%Y-%m-%d").tolist()
+            raise ValueError(f"duplicate dates for {model}: {dup[:5]}")
         parts[model] = frame.sort_values("date").reset_index(drop=True)
 
     ref = parts["baseline"][["date", "target", "same_session_return"]].copy()
@@ -136,41 +140,37 @@ def _comparison(pred: pd.DataFrame) -> pd.DataFrame:
 
 def _advantage_curves(pred: pd.DataFrame) -> pd.DataFrame:
     y = pred["target"].astype(int).to_numpy()
-    base_ll = rowwise_log_loss(y, pred["baseline_prob"].to_numpy(float))
-    base_br = rowwise_brier(y, pred["baseline_prob"].to_numpy(float))
-    out = pred[["date", "target", "same_session_return"]].copy()
+    base_p = pred["baseline_prob"].to_numpy(float)
+    base_ll = rowwise_log_loss(y, base_p)
+    base_br = rowwise_brier(y, base_p)
+    out = pd.DataFrame({"date": pred["date"]})
     for model in (*CANDIDATES, *NEGATIVE_CONTROLS):
-        ll_imp = base_ll - rowwise_log_loss(y, pred[f"{model}_prob"].to_numpy(float))
-        br_imp = base_br - rowwise_brier(y, pred[f"{model}_prob"].to_numpy(float))
-        s_ll = pd.Series(ll_imp)
-        s_br = pd.Series(br_imp)
-        out[f"{model}_cum_logloss_advantage"] = s_ll.cumsum().to_numpy()
-        out[f"{model}_cum_brier_advantage"] = s_br.cumsum().to_numpy()
-        for window in (20, 60, 120):
-            out[f"{model}_roll{window}_logloss_improvement"] = s_ll.rolling(window, min_periods=window).mean().to_numpy()
-            out[f"{model}_roll{window}_brier_improvement"] = s_br.rolling(window, min_periods=window).mean().to_numpy()
+        p = pred[f"{model}_prob"].to_numpy(float)
+        ll_imp = base_ll - rowwise_log_loss(y, p)
+        br_imp = base_br - rowwise_brier(y, p)
+        out[f"{model}_cum_logloss_advantage"] = np.cumsum(ll_imp)
+        out[f"{model}_cum_brier_advantage"] = np.cumsum(br_imp)
+        for w in (20, 60, 120):
+            out[f"{model}_roll{w}_logloss_improvement"] = pd.Series(ll_imp).rolling(w).mean().to_numpy()
+            out[f"{model}_roll{w}_brier_improvement"] = pd.Series(br_imp).rolling(w).mean().to_numpy()
     return out
 
 
 def _monthly_leaders(metrics: pd.DataFrame) -> pd.DataFrame:
-    months = metrics.loc[metrics["slice"].str.startswith("month_")].copy()
     rows: list[dict[str, object]] = []
-    for slice_id, group in months.groupby("slice", sort=True):
-        by_model = group.set_index("model_id")
-        base_ll = float(by_model.loc["baseline", "log_loss"])
-        improvements = {m: base_ll - float(by_model.loc[m, "log_loss"]) for m in (*CANDIDATES, *NEGATIVE_CONTROLS)}
-        candidate_leader = max(CANDIDATES, key=lambda m: improvements[m])
-        all_leader = max((*CANDIDATES, *NEGATIVE_CONTROLS), key=lambda m: improvements[m])
+    month_ids = sorted(s for s in metrics["slice"].unique() if str(s).startswith("month_"))
+    for month in month_ids:
+        m = metrics.loc[metrics["slice"] == month].set_index("model_id")
+        base_ll = float(m.loc["baseline", "log_loss"])
+        gains = {model: base_ll - float(m.loc[model, "log_loss"]) for model in (*CANDIDATES, *NEGATIVE_CONTROLS)}
+        best_candidate = max(CANDIDATES, key=lambda x: gains[x])
         control = NEGATIVE_CONTROLS[0]
         rows.append({
-            "month": slice_id.removeprefix("month_"),
-            "candidate_leader": candidate_leader,
-            "candidate_leader_logloss_improvement": improvements[candidate_leader],
-            "all_leader": all_leader,
-            "all_leader_logloss_improvement": improvements[all_leader],
-            "negative_control_logloss_improvement": improvements[control],
-            "negative_control_beats_best_candidate": int(improvements[control] > improvements[candidate_leader]),
-            **{f"{m}_logloss_improvement": improvements[m] for m in (*CANDIDATES, *NEGATIVE_CONTROLS)},
+            "month": month.replace("month_", ""),
+            "best_candidate": best_candidate,
+            "best_candidate_logloss_improvement": gains[best_candidate],
+            "negative_control_logloss_improvement": gains[control],
+            "negative_control_beats_best_candidate": int(gains[control] > gains[best_candidate]),
         })
     return pd.DataFrame(rows)
 
@@ -184,83 +184,11 @@ def _c_frequency(pred: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _summary(
-    pred: pd.DataFrame,
-    metrics: pd.DataFrame,
-    comparison: pd.DataFrame,
-    monthly: pd.DataFrame,
-    c_frequency: pd.DataFrame,
-    manifest_text: str | None,
-) -> str:
-    full = metrics.loc[metrics["slice"] == "full", [
-        "model_id", "n", "log_loss", "brier_score", "roc_auc", "accuracy", "calibration_slope", "probability_spread_return"
-    ]].sort_values("log_loss")
-    years = metrics.loc[metrics["slice"].str.startswith("year_"), [
-        "slice", "model_id", "n", "log_loss", "brier_score", "roc_auc", "accuracy"
-    ]
-    control_month_wins = int(monthly["negative_control_beats_best_candidate"].sum())
-    month_n = int(len(monthly))
-    latest_curve = _advantage_curves(pred).iloc[-1]
-    latest_roll_rows = []
-    for model in (*CANDIDATES, *NEGATIVE_CONTROLS):
-        latest_roll_rows.append({
-            "model_id": model,
-            "cum_logloss_advantage": float(latest_curve[f"{model}_cum_logloss_advantage"]),
-            "roll20_ll_improvement": latest_curve[f"{model}_roll20_logloss_improvement"],
-            "roll60_ll_improvement": latest_curve[f"{model}_roll60_logloss_improvement"],
-            "roll120_ll_improvement": latest_curve[f"{model}_roll120_logloss_improvement"],
-        })
-    latest_roll = pd.DataFrame(latest_roll_rows).sort_values("cum_logloss_advantage", ascending=False)
-
-    lines = [
-        "# META_HIST_EXPANDING_2025_001 — Daily Expanding Reconstruction",
-        "",
-        "**Evidence status: RETROSPECTIVE / DESCRIPTIVE ONLY.** Every test-day model is tuned and fitted using only prior eligible trading days, but the candidate family itself was designed after these outcomes existed. This experiment cannot alter `META_FWD_001`.",
-        "",
-        f"Test sessions: **{len(pred):,}** ({pred['date'].min().date()} .. {pred['date'].max().date()})",
-        "Procedure: daily expanding refit; frozen C grid and inner-CV rule; same frozen baseline and symbolic feature blocks as META_FWD_001.",
-        "",
-        "## Full-period metrics",
-        "",
-        tabulate(full, headers="keys", tablefmt="github", showindex=False, floatfmt=".6g"),
-        "",
-        "## Increment versus identical daily baseline",
-        "",
-        tabulate(comparison, headers="keys", tablefmt="github", showindex=False, floatfmt=".6g"),
-        "",
-        "## Calendar-year slices",
-        "",
-        tabulate(years, headers="keys", tablefmt="github", showindex=False, floatfmt=".6g"),
-        "",
-        "## Latest cumulative / rolling information advantage",
-        "",
-        tabulate(latest_roll, headers="keys", tablefmt="github", showindex=False, floatfmt=".6g"),
-        "",
-        "## Regime warning",
-        "",
-        f"The deterministic hash negative control beat the best traditional candidate in **{control_month_wins}/{month_n} calendar months** on monthly LogLoss improvement.",
-        "This count is diagnostic, not a p-value. Frequent control dominance argues that date-state partitioning / regime coincidence may explain apparent branch wins.",
-        "",
-        "## C selection frequency",
-        "",
-        tabulate(c_frequency, headers="keys", tablefmt="github", showindex=False, floatfmt=".6g"),
-        "",
-        "## Framework implication",
-        "",
-        "Do not rescue weak branches by editing their traditional rules after looking at this history. If regime dependence is strong, the next framework should be registered under a new ID and should test whether symbolic states add information *conditional on independently defined market regimes*, with negative-control-adjusted promotion rules.",
-        "",
-    ]
-    if manifest_text:
-        lines.extend(["## Data manifest", "", "```json", manifest_text.strip(), "```", ""])
-    return "\n".join(lines)
-
-
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Aggregate META_HIST_EXPANDING_2025_001 workers")
+    parser = argparse.ArgumentParser(description="Aggregate META_HIST_EXPANDING_2025_001 worker outputs")
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-
     pred = _load_workers(args.input_dir)
     metrics = _slice_metrics(pred)
     comparison = _comparison(pred)
@@ -276,22 +204,49 @@ def main() -> None:
     monthly.to_csv(args.out / "monthly_regime_diagnostics.csv", index=False)
     c_frequency.to_csv(args.out / "c_selection_frequency.csv", index=False)
 
-    manifest_path = args.input_dir / "manifest_baseline.json"
-    manifest_text = manifest_path.read_text(encoding="utf-8") if manifest_path.exists() else None
-    metadata = {
+    full = metrics.loc[metrics["slice"] == "full", [
+        "model_id", "n", "log_loss", "brier_score", "roc_auc", "accuracy", "calibration_slope", "probability_spread_return"
+    ]].sort_values("log_loss")
+    years = metrics.loc[metrics["slice"].str.startswith("year_"), [
+        "slice", "model_id", "n", "log_loss", "brier_score", "roc_auc", "accuracy"
+    ]
+    control_wins = int(monthly["negative_control_beats_best_candidate"].sum())
+
+    lines = [
+        "# META_HIST_EXPANDING_2025_001 — Exact Daily Expanding Reconstruction",
+        "",
+        "**Evidence status: RETROSPECTIVE / DESCRIPTIVE ONLY.**",
+        "",
+        "Each eligible trading day is predicted after re-running the frozen inner-CV C selection on all prior eligible rows, then refitting the selected ridge-logistic model. No test-day outcome enters its own fit.",
+        "",
+        f"Test sessions: **{len(pred):,}** ({pred['date'].min().date()} .. {pred['date'].max().date()})",
+        "",
+        "## Full-period metrics",
+        "",
+        tabulate(full, headers="keys", tablefmt="github", showindex=False, floatfmt=".6g"),
+        "",
+        "## Increment versus daily expanding baseline",
+        "",
+        tabulate(comparison, headers="keys", tablefmt="github", showindex=False, floatfmt=".6g"),
+        "",
+        "## Calendar-year slices",
+        "",
+        tabulate(years, headers="keys", tablefmt="github", showindex=False, floatfmt=".6g"),
+        "",
+        "## Negative-control regime diagnostic",
+        "",
+        f"The hash negative control beat the best traditional candidate in **{control_wins}/{len(monthly)} months** by monthly LogLoss improvement.",
+        "",
+        "The exact reconstruction is retrospective and cannot alter META_FWD_001.",
+        "",
+    ]
+    (args.out / "SUMMARY.md").write_text("\n".join(lines), encoding="utf-8")
+    (args.out / "run_metadata.json").write_text(json.dumps({
         "hypothesis_id": HYPOTHESIS_ID,
         "status": "RETROSPECTIVE_DESCRIPTIVE",
         "sessions": int(len(pred)),
-        "first_date": pred["date"].min().strftime("%Y-%m-%d"),
-        "last_date": pred["date"].max().strftime("%Y-%m-%d"),
-        "models": list(MODELS),
         "procedure": "daily expanding refit with frozen inner-CV C selection",
-        "negative_control": list(NEGATIVE_CONTROLS),
-    }
-    (args.out / "run_metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (args.out / "SUMMARY.md").write_text(
-        _summary(pred, metrics, comparison, monthly, c_frequency, manifest_text), encoding="utf-8"
-    )
+    }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print((args.out / "SUMMARY.md").read_text(encoding="utf-8"))
 
 
