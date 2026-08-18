@@ -1,0 +1,68 @@
+name: META_HIST_2025_001 Retrospective 2025+ Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-meta-hist-2025.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: meta-hist-2025-001
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install same frozen runtime as first META_FWD signal
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - name: Run retrospective 2025+ holdout
+        run: >-
+          python -m metaalpha.research_meta_hist_2025
+          --provider sina
+          --symbol 000001
+          --raw-start 19901219
+          --test-start 20250101
+          --end 20260817
+          --out reports/meta_hist_2025_001
+      - name: Show summary
+        if: success()
+        run: |
+          cat reports/meta_hist_2025_001/SUMMARY.md
+          cat reports/meta_hist_2025_001/run_metadata.json
+          cat reports/meta_hist_2025_001/data_manifest.json
+      - name: Commit immutable retrospective report
+        if: success()
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/meta_hist_2025_001/
+          if git diff --cached --quiet; then
+            echo 'No report changes to commit.'
+            exit 0
+          fi
+          git commit -m 'research: record META_HIST_2025_001 retrospective result'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meta-hist-2025-${{ github.sha }}
+          path: reports/meta_hist_2025_001
+          if-no-files-found: warn
+          retention-days: 30
