@@ -1,0 +1,83 @@
+name: META_HIST_EXPANDING_2025_001 Daily Expanding Reconstruction
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-meta-expanding-2025.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  worker:
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [baseline, cycle, ziping, qimen, meihua, liuyao_hash]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install frozen META runtime
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - name: Reconstruct daily expanding predictions
+        run: >-
+          python -m metaalpha.research_meta_expanding_2025_worker
+          --model-id '${{ matrix.model }}'
+          --provider sina
+          --symbol 000001
+          --raw-start 19901219
+          --test-start 20250101
+          --end 20260817
+          --out 'work/${{ matrix.model }}.csv'
+          --manifest-out 'work/manifest_${{ matrix.model }}.json'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meta-expanding-${{ matrix.model }}
+          path: work/
+          retention-days: 7
+
+  aggregate:
+    needs: worker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install frozen META runtime
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: meta-expanding-*
+          path: work
+          merge-multiple: true
+      - name: Aggregate expanding reconstruction
+        run: >-
+          python -m metaalpha.research_meta_expanding_2025_aggregate
+          --input-dir work
+          --out reports/meta_hist_expanding_2025_001
+      - name: Commit retrospective report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/meta_hist_expanding_2025_001/
+          if git diff --cached --quiet; then
+            echo 'No report change.'
+            exit 0
+          fi
+          git commit -m 'research: record META_HIST_EXPANDING_2025_001 results'
+          git pull --rebase origin main
+          git push origin HEAD:main
