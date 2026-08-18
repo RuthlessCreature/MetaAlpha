@@ -16,6 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         model: [baseline, cycle, ziping, qimen, meihua, liuyao_hash]
+        chunk: [0, 1, 2, 3]
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -27,7 +28,7 @@ jobs:
         run: |
           pip install -r requirements/meta-fwd-001.lock.txt
           pip install -e . --no-deps
-      - name: Reconstruct daily expanding predictions
+      - name: Reconstruct exact daily expanding prediction chunk
         run: >-
           python -m metaalpha.research_meta_expanding_2025_worker
           --model-id '${{ matrix.model }}'
@@ -36,11 +37,13 @@ jobs:
           --raw-start 19901219
           --test-start 20250101
           --end 20260817
-          --out 'work/${{ matrix.model }}.csv'
-          --manifest-out 'work/manifest_${{ matrix.model }}.json'
+          --chunk-index '${{ matrix.chunk }}'
+          --chunk-count 4
+          --out 'work/${{ matrix.model }}_part${{ matrix.chunk }}.csv'
+          --manifest-out 'work/manifest_${{ matrix.model }}_part${{ matrix.chunk }}.json'
       - uses: actions/upload-artifact@v4
         with:
-          name: meta-expanding-${{ matrix.model }}
+          name: meta-expanding-${{ matrix.model }}-${{ matrix.chunk }}
           path: work/
           retention-days: 7
 
