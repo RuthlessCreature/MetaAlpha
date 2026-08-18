@@ -2,11 +2,16 @@ name: META_FWD_001 Future Branch Tournament
 
 on:
   schedule:
-    # 08:10 Asia/Shanghai, Monday-Friday. A delayed run after 09:25 remains
-    # auditable but is automatically ineligible.
-    - cron: '10 0 * * 1-5'
-    # 16:40 Asia/Shanghai, Monday-Friday.
-    - cron: '40 8 * * 1-5'
+    # 06:00 Asia/Shanghai, Monday-Friday (22:00 UTC on prior Sun-Thu).
+    # Intentionally early because GitHub scheduled jobs can be delayed; a run
+    # that still lands after 09:25 remains auditable but automatically ineligible.
+    - cron: '0 22 * * 0-4'
+    # 18:30 Asia/Shanghai, Monday-Friday. Gives Sina more time to publish the
+    # completed target-session bar than the former 16:40 settlement.
+    - cron: '30 10 * * 1-5'
+    # 07:15 Asia/Shanghai, Tuesday-Saturday (23:15 UTC on prior Mon-Fri).
+    # Catch-up settlement for providers that only expose the prior close later.
+    - cron: '15 23 * * 1-5'
   workflow_dispatch:
     inputs:
       mode:
@@ -32,7 +37,7 @@ concurrency:
 jobs:
   prediction:
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '10 0 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 22 * * 0-4') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'prediction')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -92,7 +97,8 @@ jobs:
 
   score:
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '40 8 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '30 10 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '15 23 * * 1-5') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'score')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
