@@ -1,1 +1,2 @@
 date,confirmatory_eligible,generated_at,baseline_prob,cycle_prob,ziping_prob,source_file,same_session_return,same_session_direction
+2026-08-17,True,2026-08-16T21:51:55.722793+08:00,0.5407529358869914,0.5510074182186891,0.5559765262899626,forward/HYBRID_FWD_001/predictions/2026-08-17.json,0.014126690527748176,1
