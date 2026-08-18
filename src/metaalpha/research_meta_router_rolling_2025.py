@@ -53,7 +53,6 @@ def _run_router(df: pd.DataFrame, experts: tuple[str, ...], window: int, router_
         for i, expert in enumerate(experts):
             wr[f"weight_{expert}"] = float(weights[i])
         weight_rows.append(wr)
-
         loss_history.append((probs - y) ** 2)
 
     return pd.DataFrame(pred_rows), pd.DataFrame(weight_rows)
@@ -88,9 +87,11 @@ def run(predictions: pd.DataFrame, *, out_dir: Path | None = None) -> dict[str, 
     for expert in ALL_EXPERTS[1:]:
         metric_rows.append(_metric_row(expert, y, df[f"{expert}_prob"].to_numpy(float), returns))
 
+    router_experts: dict[str, tuple[str, ...]] = {}
     for label, experts in (("all", ALL_EXPERTS), ("traditional", TRAD_EXPERTS)):
         for window in WINDOWS:
             router_id = f"rolling_hedge_{label}_{window}"
+            router_experts[router_id] = experts
             pred, weights = _run_router(df, experts, window, router_id)
             pred_parts.append(pred)
             weight_parts.append(weights)
@@ -115,10 +116,11 @@ def run(predictions: pd.DataFrame, *, out_dir: Path | None = None) -> dict[str, 
     for router_id in sorted(weights["router_id"].unique()):
         w = weights.loc[weights["router_id"] == router_id].sort_values("date")
         last = w.iloc[-1]
-        for col in [c for c in w.columns if c.startswith("weight_")]:
+        for expert in router_experts[router_id]:
+            col = f"weight_{expert}"
             ending_rows.append({
                 "router_id": router_id,
-                "expert": col.replace("weight_", ""),
+                "expert": expert,
                 "ending_weight": float(last[col]),
                 "max_weight": float(w[col].max()),
                 "min_weight": float(w[col].min()),
