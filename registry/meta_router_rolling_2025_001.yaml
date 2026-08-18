@@ -1,0 +1,21 @@
+experiment_id: META_ROUTER_ROLLING_2025_001
+status: RETROSPECTIVE_TRACK_T
+created: 2026-08-18
+source_predictions: reports/meta_hist_2025_001/predictions.csv
+period: 2025-01-02..2026-08-17
+expert_sets:
+  all: [baseline, cycle, ziping, qimen, meihua, liuyao_hash]
+  traditional: [baseline, cycle, ziping, qimen, meihua]
+windows_sessions: [20, 60, 120]
+algorithm: >-
+  For session t, compute each expert's Brier losses only over the trailing H
+  settled sessions ending at t-1. Set eta=sqrt(2*ln(K)/n_history), and weights
+  proportional to exp(-eta*cumulative_window_loss). If no prior history exists,
+  use equal weights. Predict t with those weights, then append t loss only after
+  prediction.
+no_same_session_outcome_in_weights: true
+promotion: none
+interpretation: >-
+  Historical Track T diagnostic only. Window comparison is exploratory and may
+  motivate a separately frozen future router, but no winning window may be folded
+  into META_FWD_001.
