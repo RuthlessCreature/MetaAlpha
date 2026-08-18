@@ -1,0 +1,41 @@
+experiment_id: META_CALENDAR_STRESS_2025_001
+status: RETROSPECTIVE_DESCRIPTIVE
+created: 2026-08-18
+period: 2025-01-02..2026-08-17
+train: all eligible rows before 2025-01-01
+purpose: >-
+  Test whether symbolic/hash improvements survive a richer ordinary Gregorian
+  calendar baseline rather than exploiting calendar structure omitted from the
+  frozen META market baseline.
+ordinary_calendar_features:
+  categorical:
+    - day_of_month
+    - iso_week
+    - quarter
+  continuous:
+    - days_to_calendar_month_end
+    - annual_sin_1
+    - annual_cos_1
+    - annual_sin_2
+    - annual_cos_2
+    - annual_sin_3
+    - annual_cos_3
+information_timing: all known from target civil date before 09:25
+model:
+  family: ridge_logistic
+  C_selection: frozen expanding inner-CV using pre-2025 training only
+models:
+  - market_baseline
+  - rich_calendar_baseline
+  - rich_calendar_plus_cycle
+  - rich_calendar_plus_ziping
+  - rich_calendar_plus_qimen
+  - rich_calendar_plus_meihua
+  - rich_calendar_plus_liuyao_hash
+primary_question: >-
+  Does each symbolic block improve LogLoss/Brier over the stronger rich-calendar
+  baseline on identical 2025+ test rows?
+interpretation: >-
+  If symbolic/hash gains disappear after rich Gregorian controls, interpret earlier
+  gains as generic calendar/time-partition information rather than traditional uniqueness.
+does_not_modify_META_FWD_001: true
