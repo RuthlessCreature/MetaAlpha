@@ -1,0 +1,83 @@
+name: META_HIST_EXPANDING_C001_2025_001 Other Trio
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-meta-expanding-other-trio.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install frozen META runtime
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - name: Fetch one market snapshot
+        run: |
+          mkdir -p work reports/meta_hist_expanding_c001_other_2025_001
+          python - <<'PY'
+          from pathlib import Path
+          from metaalpha.data_sources import fetch_akshare_index
+          raw, manifest = fetch_akshare_index(symbol='000001', start_date='19901219', end_date='20260817', provider='sina')
+          raw.to_csv('work/raw.csv', index=False)
+          Path('reports/meta_hist_expanding_c001_other_2025_001/data_manifest.json').write_text(manifest.to_json() + '\n', encoding='utf-8')
+          PY
+      - name: Run other trio daily expanding
+        run: |
+          for model in cycle qimen meihua; do
+            python -m metaalpha.research_meta_expanding_2025_worker \
+              --model-id "$model" \
+              --input-csv work/raw.csv \
+              --test-start 20250101 \
+              --end 20260817 \
+              --fixed-c 0.01 \
+              --out "work/${model}.csv"
+          done
+      - name: Summarize other trio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+          out=Path('reports/meta_hist_expanding_c001_other_2025_001')
+          models=['cycle','qimen','meihua']
+          frames={m:pd.read_csv(f'work/{m}.csv') for m in models}
+          ref=frames['cycle'][['date','target','same_session_return']].copy()
+          def metrics(df):
+              y=df['target'].astype(float).to_numpy(); p=np.clip(df['prob_up'].astype(float).to_numpy(),1e-15,1-1e-15)
+              ll=float(np.mean(-(y*np.log(p)+(1-y)*np.log(1-p)))); br=float(np.mean((p-y)**2)); acc=float(np.mean((p>=.5)==(y>=.5)))
+              return ll,br,acc
+          lines=['# META_HIST_EXPANDING_C001_OTHER_2025_001','', '**RETROSPECTIVE / DESCRIPTIVE / companion to the critical-trio fixed-C daily expanding run.**','', '| model | n | LogLoss | Brier | Accuracy |','|---|---:|---:|---:|---:|']
+          for m in models:
+              ll,br,acc=metrics(frames[m]); lines.append(f'| {m} | {len(frames[m])} | {ll:.6f} | {br:.6f} | {acc:.4f} |')
+          lines += ['', '## Calendar-year slices','', '| year | model | n | LogLoss |','|---:|---|---:|---:|']
+          dates=pd.to_datetime(ref['date'])
+          for year in sorted(dates.dt.year.unique()):
+              mask=dates.dt.year==year
+              for m in models:
+                  sdf=frames[m].loc[mask].reset_index(drop=True); ll,_,_=metrics(sdf); lines.append(f'| {year} | {m} | {len(sdf)} | {ll:.6f} |')
+          (out/'SUMMARY.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          for m,df in frames.items(): df.to_csv(out/f'{m}_daily.csv',index=False)
+          print((out/'SUMMARY.md').read_text())
+          PY
+      - name: Commit report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/meta_hist_expanding_c001_other_2025_001/
+          git commit -m 'research: record other-trio fixed-C expanding diagnostic'
+          git pull --rebase origin main
+          git push origin HEAD:main
