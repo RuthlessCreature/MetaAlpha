@@ -1,0 +1,40 @@
+experiment_id: META_HASH_ENSEMBLE_NULL_2025_001
+status: RETROSPECTIVE_DESCRIPTIVE
+created: 2026-08-18
+purpose: >-
+  Determine whether the strong LIUYAO_HASH_V1 historical result is a lucky single
+  pseudo-random date encoding or a generic property of similarly structured
+  high-cardinality deterministic date partitions.
+market:
+  provider: sina
+  symbol: '000001'
+  test_start: '20250101'
+  test_end: '20260817'
+model:
+  family: ridge_logistic
+  C: 0.01
+controls:
+  count: 100
+  seed_ids: '0..99 inclusive; no seed selection'
+  salt_template: 'METAALPHA|HASH_ENSEMBLE_NULL_2025_001|seed={seed}'
+  mapping: >-
+    SHA256(salt|YYYY-MM-DD|09:25:00+08:00), first six bytes modulo 4 to line
+    values 6/7/8/9, then the same base_pattern, changed_pattern, moving_count and
+    moving_lines_key representation used by LIUYAO_HASH_V1.
+reference:
+  include_existing_LIUYAO_HASH_V1: true
+primary:
+  - fraction_of_100_hashes_beating_market_baseline_logloss
+  - fraction_beating_market_baseline_brier
+  - distribution_of_logloss_improvement
+  - LIUYAO_HASH_V1_percentile_within_100_seed_null_distribution
+interpretation: >-
+  This is a negative-control mechanism diagnostic. If many independent hashes beat
+  baseline, apparent symbolic gains can arise from generic deterministic date
+  partitioning. If LIUYAO_HASH_V1 is extreme among seeds, its prior win may simply be
+  a lucky frozen random encoding. Neither outcome validates metaphysical claims.
+constraints:
+  no_seed_selection: true
+  no_posthoc_salt_changes: true
+  fixed_C: true
+  does_not_modify_META_FWD_001: true
