@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from .data_sources import fetch_akshare_index
@@ -36,16 +37,26 @@ def run_worker(
     test_start: str,
     test_end: str,
     fixed_c: float | None = None,
+    chunk_index: int = 0,
+    chunk_count: int = 1,
 ) -> pd.DataFrame:
     if model_id not in MODELS:
         raise ValueError(f"model_id must be one of {MODELS}")
+    if chunk_count < 1 or chunk_index < 0 or chunk_index >= chunk_count:
+        raise ValueError("invalid chunk_index/chunk_count")
 
     dataset = build_meta_historical_dataset(raw)
     start_ts = pd.Timestamp(test_start)
     end_ts = pd.Timestamp(test_end)
-    test_dates = dataset.loc[(dataset["date"] >= start_ts) & (dataset["date"] <= end_ts), "date"].tolist()
-    if not test_dates:
+    all_test_dates = dataset.loc[(dataset["date"] >= start_ts) & (dataset["date"] <= end_ts), "date"].tolist()
+    if not all_test_dates:
         raise ValueError("no eligible test dates")
+
+    chunks = np.array_split(np.arange(len(all_test_dates)), chunk_count)
+    selected_idx = chunks[chunk_index]
+    test_dates = [all_test_dates[int(i)] for i in selected_idx]
+    if not test_dates:
+        raise ValueError(f"empty chunk {chunk_index}/{chunk_count}")
 
     categorical = _categorical_cols(model_id)
     rows: list[dict[str, object]] = []
@@ -87,7 +98,11 @@ def run_worker(
         )
         if i == 1 or i % 20 == 0 or i == len(test_dates):
             mode = "fixed" if fixed_c is not None else "tuned"
-            print(f"[{model_id}/{mode}] {i}/{len(test_dates)} date={date.date()} C={best_c} p={float(p[0]):.6f}", flush=True)
+            print(
+                f"[{model_id}/{mode}/chunk={chunk_index+1}/{chunk_count}] "
+                f"{i}/{len(test_dates)} date={date.date()} C={best_c} p={float(p[0]):.6f}",
+                flush=True,
+            )
 
     return pd.DataFrame(rows)
 
@@ -103,6 +118,8 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--manifest-out", type=Path)
     parser.add_argument("--fixed-c", type=float)
+    parser.add_argument("--chunk-index", type=int, default=0)
+    parser.add_argument("--chunk-count", type=int, default=1)
     args = parser.parse_args()
 
     raw, manifest = fetch_akshare_index(
@@ -117,6 +134,8 @@ def main() -> None:
         test_start=args.test_start,
         test_end=args.end,
         fixed_c=args.fixed_c,
+        chunk_index=args.chunk_index,
+        chunk_count=args.chunk_count,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.out, index=False)
