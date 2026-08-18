@@ -1,0 +1,58 @@
+policy_id: META_V2_DECISION_POLICY_001
+status: FROZEN_FOR_RETROSPECTIVE_V2_DIAGNOSTICS
+created: 2026-08-18
+scope:
+  applies_to:
+    - META_REGIME_NULL_2025_001
+  does_not_modify:
+    - META_FWD_001
+    - HYBRID_FWD_001
+    - ZIPING_FWD_001
+primary_losses:
+  - log_loss
+  - brier_score
+thresholds:
+  min_logloss_improvement_vs_market_regime_baseline: 0.001
+  min_brier_improvement_vs_market_regime_baseline: 0.0005
+  matched_null_percentile_for_uniqueness: 0.95
+  matched_null_empirical_p_max: 0.05
+classifications:
+  NO_INCREMENT:
+    rule: >-
+      R3 fails either the minimum LogLoss or Brier improvement versus R1.
+  GENERIC_TIME_ENCODING_CANDIDATE:
+    rule: >-
+      R3 improves R1 at the primary thresholds but fails the matched-null 95th
+      percentile / empirical p<=0.05 requirement. This may be useful for Track T
+      but is not evidence that the traditional mapping is unique.
+  CONDITIONAL_TRADITIONAL_CANDIDATE:
+    rule: >-
+      R3 improves R1 at the primary thresholds, R3 improves both primary losses
+      versus R2, and R3 reaches >=95th percentile with empirical one-sided p<=0.05
+      versus its identical-capacity matched-null family on both primary losses.
+  MAIN_EFFECT_TRADITIONAL_CANDIDATE:
+    rule: >-
+      R2 improves R1 at the primary thresholds and matched-null uniqueness is later
+      established without requiring R3 interaction gains.
+  HISTORICAL_FAILURE:
+    rule: >-
+      Symbolic augmentation materially worsens the primary losses or repeatedly
+      lands near the bottom of matched-null distributions.
+scientific_track_S:
+  uniqueness_claim_requires:
+    - positive primary-loss improvement over ordinary market-regime baseline
+    - matched-null percentile >= 0.95 for LogLoss and Brier
+    - empirical one-sided p <= 0.05 for LogLoss and Brier
+    - future-only confirmation under a new experiment ID
+    - cross-market replication or explicitly market-specific claim
+trading_track_T:
+  rule: >-
+    Synthetic/hash/shift-derived time encodings are allowed to compete with traditional
+    mappings. A Track T success only supports predictive utility, never metaphysical validity.
+versioning:
+  failed_traditional_rule_may_not_be_rewritten_in_place: true
+  any_rule_change_requires_new_feature_version: true
+  meihua_time_v1_must_remain_unchanged: true
+notes:
+  - This policy is frozen before META_REGIME_NULL_2025_001 results are inspected.
+  - Historical diagnostics can motivate a new forward family but cannot rescue META_FWD_001.
