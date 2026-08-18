@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from .data_sources import fetch_akshare_index
-from .hybrid_model import fit_predict_probability
+from .hybrid_model import fit_predict_probability, make_ridge_logistic_pipeline
 from .market_baseline import BASE_CATEGORICAL, BASE_CONTINUOUS, TARGET_DIRECTION, TARGET_RETURN
 from .meta_branch import META_CANDIDATE_FEATURES, META_NEGATIVE_CONTROL_FEATURES, build_meta_historical_dataset
 
@@ -35,6 +35,7 @@ def run_worker(
     model_id: str,
     test_start: str,
     test_end: str,
+    fixed_c: float | None = None,
 ) -> pd.DataFrame:
     if model_id not in MODELS:
         raise ValueError(f"model_id must be one of {MODELS}")
@@ -57,13 +58,21 @@ def run_worker(
         if len(train) < 1000:
             raise ValueError(f"insufficient expanding training rows before {date}")
 
-        p, best_c, _ = fit_predict_probability(
-            train,
-            test,
-            numeric_cols=list(BASE_CONTINUOUS),
-            categorical_cols=categorical,
-            target_col=TARGET_DIRECTION,
-        )
+        if fixed_c is None:
+            p, best_c, _ = fit_predict_probability(
+                train,
+                test,
+                numeric_cols=list(BASE_CONTINUOUS),
+                categorical_cols=categorical,
+                target_col=TARGET_DIRECTION,
+            )
+        else:
+            best_c = float(fixed_c)
+            pipe = make_ridge_logistic_pipeline(list(BASE_CONTINUOUS), categorical, C=best_c)
+            y_train = train[TARGET_DIRECTION].astype(int).to_numpy()
+            pipe.fit(train[list(BASE_CONTINUOUS) + categorical], y_train)
+            p = pipe.predict_proba(test[list(BASE_CONTINUOUS) + categorical])[:, 1]
+
         rows.append(
             {
                 "date": pd.Timestamp(date).strftime("%Y-%m-%d"),
@@ -77,7 +86,8 @@ def run_worker(
             }
         )
         if i == 1 or i % 20 == 0 or i == len(test_dates):
-            print(f"[{model_id}] {i}/{len(test_dates)} date={date.date()} C={best_c} p={float(p[0]):.6f}", flush=True)
+            mode = "fixed" if fixed_c is not None else "tuned"
+            print(f"[{model_id}/{mode}] {i}/{len(test_dates)} date={date.date()} C={best_c} p={float(p[0]):.6f}", flush=True)
 
     return pd.DataFrame(rows)
 
@@ -92,6 +102,7 @@ def main() -> None:
     parser.add_argument("--end", default=DEFAULT_END)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--manifest-out", type=Path)
+    parser.add_argument("--fixed-c", type=float)
     args = parser.parse_args()
 
     raw, manifest = fetch_akshare_index(
@@ -100,7 +111,13 @@ def main() -> None:
         end_date=args.end,
         provider=args.provider,
     )
-    result = run_worker(raw, model_id=args.model_id, test_start=args.test_start, test_end=args.end)
+    result = run_worker(
+        raw,
+        model_id=args.model_id,
+        test_start=args.test_start,
+        test_end=args.end,
+        fixed_c=args.fixed_c,
+    )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.out, index=False)
     if args.manifest_out is not None:
