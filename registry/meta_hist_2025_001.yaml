@@ -1,0 +1,46 @@
+hypothesis_id: META_HIST_2025_001
+status: RETROSPECTIVE_DESCRIPTIVE
+created_at: 2026-08-18
+purpose: >-
+  Evaluate the already-frozen META_FWD_001 model family over market dates from
+  2025-01-01 onward using a model fit only on eligible rows before 2025-01-01.
+  This is a retrospective diagnostic, not confirmatory evidence, because the
+  candidate family itself was selected/implemented after these outcomes existed.
+market:
+  provider: sina
+  symbol: '000001'
+  raw_history_start: '1990-12-19'
+  test_start: '2025-01-01'
+  test_end: '2026-08-17'
+  anchor: '09:25 Asia/Shanghai'
+training:
+  rule: all eligible rows strictly before 2025-01-01
+  target: same_session_close_to_close_direction
+  model: ridge_logistic
+  c_grid: [0.01, 0.1, 1.0, 10.0]
+  c_selection: frozen expanding inner CV from hybrid_model.py
+models:
+  - baseline
+  - cycle
+  - ziping
+  - qimen
+  - meihua
+  - liuyao_hash
+negative_control: liuyao_hash
+metrics:
+  - log_loss
+  - brier_score
+  - roc_auc
+  - accuracy
+  - calibration_slope
+  - probability_spread_return
+  - delta_vs_baseline
+  - 20_session_block_bootstrap_descriptive
+report_slices:
+  - full_2025_to_end
+  - calendar_year
+  - calendar_quarter
+interpretation_rules:
+  - No PASS/FAIL promotion is allowed from this experiment.
+  - No META_FWD_001 predictor feature, model rule, gate, or candidate set may be changed from these results.
+  - LIUYAO_HASH_V1 remains a negative control and is never a tradable winner.
