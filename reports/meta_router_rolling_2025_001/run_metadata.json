@@ -1,0 +1,11 @@
+{
+  "experiment_id": "META_ROUTER_ROLLING_2025_001",
+  "status": "RETROSPECTIVE_TRACK_T",
+  "windows": [
+    20,
+    60,
+    120
+  ],
+  "algorithm": "trailing-window Hedge; Brier loss; eta=sqrt(2 ln K / n_history)",
+  "sessions": 393
+}
