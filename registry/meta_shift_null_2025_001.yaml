@@ -1,0 +1,24 @@
+hypothesis_id: META_SHIFT_NULL_2025_001
+status: RETROSPECTIVE_DESCRIPTIVE
+registered_at: 2026-08-18T11:30:00+08:00
+purpose: >-
+  Test whether each traditional symbolic mapping is unusually informative versus
+  temporally shifted copies of its own state sequence. Shift controls preserve
+  the branch's categorical structure and much of its persistence while breaking
+  the original date alignment.
+period:
+  train_end: '2024-12-31'
+  test_start: '2025-01-01'
+  test_end: '2026-08-17'
+branches: [cycle, ziping, qimen, meihua]
+model:
+  type: ridge_logistic
+  C: 0.01
+  note: fixed at the value selected for every model by the pre-2025 tuning diagnostic
+shift_sessions: [5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 109, 113, 127, 131, 137, 149, 157, 167, 181, 197, 211, 227, 241]
+primary_metric: log_loss_improvement_vs_baseline
+secondary_metric: brier_improvement_vs_baseline
+interpretation:
+  - actual branch percentile among shifted copies is descriptive only
+  - actual branch below the 95th percentile of matched shifts is not evidence of unique traditional mapping information
+  - nothing here modifies META_FWD_001
