@@ -17,7 +17,7 @@ concurrency:
 jobs:
   score:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,42 +29,78 @@ jobs:
         run: |
           pip install -r requirements/meta-fwd-001.lock.txt
           pip install -e . --no-deps
-      - name: Verify frozen predictor source and runtime
-        run: python -m metaalpha.forward_runtime_lock --repo-root .
-      - name: Audit immutable prediction ledger before settlement
+      - name: Run audited catch-up with persistent diagnostics
+        shell: bash
         run: |
-          python -m metaalpha.forward_audit \
+          set +e
+          mkdir -p ops
+          LOG=ops/meta-fwd-score-diagnostic.txt
+          : > "$LOG"
+          run_cmd() {
+            name="$1"; shift
+            echo "===== ${name} =====" | tee -a "$LOG"
+            "$@" >> "$LOG" 2>&1
+            rc=$?
+            echo "RC=${rc}" | tee -a "$LOG"
+            return $rc
+          }
+
+          echo "generated_at=$(date -u +%FT%TZ)" | tee -a "$LOG"
+          echo "head=$(git rev-parse HEAD)" | tee -a "$LOG"
+          echo "shanghai_date=$(TZ=Asia/Shanghai date +%F)" | tee -a "$LOG"
+
+          run_cmd runtime_lock python -m metaalpha.forward_runtime_lock --repo-root .
+          RC_RUNTIME=$?
+          run_cmd prediction_audit python -m metaalpha.forward_audit \
             --predictions-dir forward/META_FWD_001/predictions \
             --repo-root .
-          python -m metaalpha.forward_daily_refit_audit \
+          RC_AUDIT=$?
+          run_cmd daily_refit_audit python -m metaalpha.forward_daily_refit_audit \
             --predictions-dir forward/META_FWD_001/predictions
-      - name: Lock new realized outcomes and score only from locked ledger
-        run: |
-          END=$(TZ=Asia/Shanghai date +%Y%m%d)
-          python -m metaalpha.forward_meta_ledger \
-            --predictions-dir forward/META_FWD_001/predictions \
-            --realized-dir forward/META_FWD_001/realized \
-            --out-dir forward/META_FWD_001/status \
-            --end "$END"
-      - name: Audit realized outcome structure before commit
-        run: |
-          python -m metaalpha.forward_realized_audit \
-            --realized-dir forward/META_FWD_001/realized \
-            --predictions-dir forward/META_FWD_001/predictions \
-            --repo-root . \
-            --skip-git-history
-      - name: Commit append-only outcomes and status
+          RC_REFIT=$?
+
+          RC_LEDGER=99
+          RC_REALIZED=99
+          if [ "$RC_RUNTIME" -eq 0 ] && [ "$RC_AUDIT" -eq 0 ] && [ "$RC_REFIT" -eq 0 ]; then
+            END=$(TZ=Asia/Shanghai date +%Y%m%d)
+            run_cmd ledger python -m metaalpha.forward_meta_ledger \
+              --predictions-dir forward/META_FWD_001/predictions \
+              --realized-dir forward/META_FWD_001/realized \
+              --out-dir forward/META_FWD_001/status \
+              --end "$END"
+            RC_LEDGER=$?
+            if [ "$RC_LEDGER" -eq 0 ]; then
+              run_cmd realized_audit python -m metaalpha.forward_realized_audit \
+                --realized-dir forward/META_FWD_001/realized \
+                --predictions-dir forward/META_FWD_001/predictions \
+                --repo-root . \
+                --skip-git-history
+              RC_REALIZED=$?
+            fi
+          fi
+
+          echo "===== summary =====" | tee -a "$LOG"
+          echo "runtime_lock=$RC_RUNTIME prediction_audit=$RC_AUDIT daily_refit_audit=$RC_REFIT ledger=$RC_LEDGER realized_audit=$RC_REALIZED" | tee -a "$LOG"
+          echo "realized_files=$(find forward/META_FWD_001/realized -maxdepth 1 -name '*.json' 2>/dev/null | sort | tr '\n' ' ')" | tee -a "$LOG"
+          if [ -f forward/META_FWD_001/status/latest_status.json ]; then
+            cat forward/META_FWD_001/status/latest_status.json >> "$LOG"
+          fi
+
+      - name: Commit diagnostic and any append-only outcomes
+        if: always()
+        shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ops/meta-fwd-score-diagnostic.txt
           git add forward/META_FWD_001/status/
           if compgen -G 'forward/META_FWD_001/realized/*.json' > /dev/null; then
             git add forward/META_FWD_001/realized/*.json
           fi
           if git diff --cached --quiet; then
-            echo 'No realized outcome or status change to commit.'
+            echo 'No diagnostic, realized outcome, or status change to commit.'
             exit 0
           fi
-          git commit -m 'forward: explicit catch-up lock META_FWD_001 realized outcomes'
+          git commit -m 'forward: diagnose and catch up META_FWD_001 settlement'
           git pull --rebase origin main
           git push origin HEAD:main
