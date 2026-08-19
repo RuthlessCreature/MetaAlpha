@@ -1,0 +1,7 @@
+{
+  "requested_at_shanghai": "2026-08-19T09:55:00+08:00",
+  "reason": "explicit catch-up after scheduled settlement did not lock 2026-08-17 although pinned Sina data now includes 2026-08-18",
+  "scope": "settlement_only",
+  "predictor_changes": false,
+  "gate_changes": false
+}
