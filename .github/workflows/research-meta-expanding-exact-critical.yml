@@ -1,0 +1,139 @@
+name: META_HIST_EXPANDING_EXACT_CRITICAL_2025_001
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ops/meta-expanding-exact-critical-trigger.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install frozen META runtime
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - name: Fetch shared pinned Sina snapshot
+        run: |
+          mkdir -p shared
+          python - <<'PY'
+          from pathlib import Path
+          from metaalpha.data_sources import fetch_akshare_index
+          raw, manifest = fetch_akshare_index(symbol='000001', start_date='19901219', end_date='20260817', provider='sina')
+          raw.to_csv('shared/raw.csv', index=False)
+          Path('shared/data_manifest.json').write_text(manifest.to_json() + '\n', encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meta-exact-critical-shared
+          path: shared/
+          retention-days: 7
+
+  worker:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [baseline, ziping]
+        chunk: [0, 1, 2, 3, 4, 5, 6, 7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install frozen META runtime
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - uses: actions/download-artifact@v4
+        with:
+          name: meta-exact-critical-shared
+          path: shared
+      - name: Daily expanding inner-CV reconstruction
+        run: >-
+          python -m metaalpha.research_meta_expanding_2025_worker
+          --model-id '${{ matrix.model }}'
+          --input-csv shared/raw.csv
+          --test-start 20250101
+          --end 20260817
+          --chunk-index '${{ matrix.chunk }}'
+          --chunk-count 8
+          --out 'work/${{ matrix.model }}_part${{ matrix.chunk }}.csv'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meta-exact-critical-${{ matrix.model }}-${{ matrix.chunk }}
+          path: work/
+          retention-days: 7
+
+  aggregate:
+    needs: worker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.15'
+      - name: Install frozen META runtime
+        run: |
+          pip install -r requirements/meta-fwd-001.lock.txt
+          pip install -e . --no-deps
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: meta-exact-critical-*
+          path: work
+          merge-multiple: true
+      - name: Aggregate Baseline vs Ziping
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          from metaalpha.hybrid_model import evaluate_probabilities
+          out=Path('reports/meta_hist_expanding_exact_critical_2025_001'); out.mkdir(parents=True, exist_ok=True)
+          frames={}
+          for model in ['baseline','ziping']:
+              fs=sorted(Path('work').glob(f'{model}_part*.csv'))
+              d=pd.concat([pd.read_csv(f) for f in fs], ignore_index=True).sort_values('date')
+              frames[model]=d
+          b=frames['baseline']; z=frames['ziping']
+          assert b['date'].tolist()==z['date'].tolist()
+          assert b['target'].tolist()==z['target'].tolist()
+          y=b['target'].astype(int).to_numpy(); r=b['same_session_return'].astype(float).to_numpy()
+          rows=[]
+          for model,d in frames.items():
+              m=evaluate_probabilities(y,d['prob_up'].astype(float).to_numpy(),r)
+              rows.append({'model':model,'n':len(d),'log_loss':m.log_loss,'brier':m.brier_score,'auc':m.roc_auc,'accuracy':m.accuracy})
+          met=pd.DataFrame(rows); met.to_csv(out/'metrics.csv',index=False)
+          bm=met.set_index('model').loc['baseline']; zm=met.set_index('model').loc['ziping']
+          c=pd.concat([b[['date','target','same_session_return','prob_up','best_C']].rename(columns={'prob_up':'baseline_prob','best_C':'baseline_C'}),z[['prob_up','best_C']].rename(columns={'prob_up':'ziping_prob','best_C':'ziping_C'})],axis=1)
+          c.to_csv(out/'daily_predictions.csv',index=False)
+          cf=[]
+          for model,d in frames.items():
+              for C,n in d['best_C'].value_counts().sort_index().items(): cf.append({'model':model,'C':C,'sessions':int(n),'fraction':float(n/len(d))})
+          pd.DataFrame(cf).to_csv(out/'c_frequency.csv',index=False)
+          lines=['# META_HIST_EXPANDING_EXACT_CRITICAL_2025_001','', '**RETROSPECTIVE / DESCRIPTIVE ONLY. Daily expanding, inner-CV C reselected every session.**','',f"Baseline LL: **{bm.log_loss:.6f}**; Brier: **{bm.brier:.6f}**",f"Ziping LL: **{zm.log_loss:.6f}**; Brier: **{zm.brier:.6f}**",f"ΔLL vs baseline: **{bm.log_loss-zm.log_loss:+.6f}**",f"ΔBrier vs baseline: **{bm.brier-zm.brier:+.6f}**",'', 'This is the exact critical comparison closest to META_FWD_001 daily refit mechanics. It cannot modify META_FWD_001.']
+          (out/'SUMMARY.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - name: Commit exact critical report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/meta_hist_expanding_exact_critical_2025_001/
+          git commit -m 'research: record exact Baseline-vs-Ziping daily expanding diagnostic'
+          git pull --rebase origin main
+          git push origin HEAD:main
