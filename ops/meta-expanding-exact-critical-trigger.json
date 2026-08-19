@@ -1,0 +1,8 @@
+{
+  "requested_at_shanghai": "2026-08-19T09:58:00+08:00",
+  "scope": "retrospective_exact_daily_expanding_baseline_vs_ziping",
+  "test_start": "2025-01-01",
+  "test_end": "2026-08-17",
+  "predictor_changes": false,
+  "forward_experiment_changes": false
+}
