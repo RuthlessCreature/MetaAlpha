@@ -1,0 +1,101 @@
+protocol_id: META_V2_SPECIFICITY_PROTOCOL_001
+status: PREREGISTERED_METHOD_POLICY
+registered_date: '2026-08-19'
+modifies_existing_forward_ids: false
+applies_to_new_families_only: true
+
+purpose: >-
+  Prevent promotion of a traditional temporal representation merely because it
+  beats an ordinary market baseline. New v2 scientific claims must demonstrate
+  alignment specificity against matched nulls, stability, replication, and
+  prospective evidence.
+
+tracks:
+  scientific_S:
+    claim: exact traditional mapping contains alignment-specific information
+    stages:
+      - S0_semantic_freeze
+      - S1_market_baseline_utility
+      - S2_rich_calendar_stress
+      - S3_matched_alignment_null
+      - S4_global_selection_aware_null
+      - S5_temporal_invariance
+      - S6_external_market_replication
+      - S7_prospective_confirmation
+  trading_T:
+    claim: frozen temporal encoding improves prediction only
+    traditional_interpretation_allowed: false
+    posthoc_seed_selection_allowed: false
+
+primary_metrics:
+  - log_loss
+  - brier_score
+secondary_metrics:
+  - roc_auc
+  - calibration
+  - probability_spread_return
+
+historical_nomination_gates:
+  ordinary_baseline:
+    min_logloss_improvement: 0.001
+    min_brier_improvement: 0.0005
+    min_auc_delta: -0.005
+  uncertainty:
+    block_size_sessions: 20
+    bootstrap_repetitions_min: 2000
+    min_probability_improvement_positive: 0.95
+  matched_null_specificity:
+    exact_mapping_percentile_min: 0.99
+    global_familywise_adjusted_p_max: 0.05
+    branchwise_unadjusted_p_not_sufficient: true
+  temporal_invariance:
+    chronological_windows: 4
+    min_windows_positive_logloss: 3
+    min_windows_positive_brier: 3
+    isolated_regime_win_not_sufficient: true
+  external_replication:
+    required_for_general_claim: true
+    same_market_only_claim_must_be_labeled_market_specific: true
+
+matched_null_policy:
+  required_families:
+    - displaced_same_state_process
+    - synthetic_deterministic_encoding_matched_capacity
+  conditional_families:
+    - fake_anchor
+    - phase_scramble_preserving_persistence
+  displaced_session_offsets:
+    policy: dense_integer_offsets
+    min_offset: 5
+    max_offset: 252
+  synthetic_encoding:
+    minimum_frozen_seeds: 1000
+    seed_selection_after_outcomes: prohibited
+  inference_unit: whole_mapping
+  best_category_or_best_seed_cherry_pick: prohibited
+
+selection_control:
+  preferred_method: max_statistic_or_westfall_young_equivalent
+  family_definition_must_be_frozen_before_evaluation: true
+  correction_scope: all_candidate_mappings_and_all_null_mappings_in_family
+
+prospective_promotion:
+  historical_survivor_is_nomination_only: true
+  new_future_id_required: true
+  immutable_precommit_required: true
+  target_eligible_settled_sessions: 500
+  no_rescue_from_overlapping_shadow_experiments: true
+  no_rule_changes_after_first_eligible_record: true
+
+v1_status_lock:
+  MEIHUA_TIME_V1: HISTORICAL_FAIL
+  QIMEN_V1: NO_SPECIFICITY_UNSTABLE
+  CYCLE_V1: GENERIC_TEMPORAL_ENCODING_CANDIDATE
+  ZIPING_CURRENT: WEAK_REGIME_DEPENDENT_RESIDUAL_NO_SPECIFICITY
+  LIUYAO_HASH_V1: LUCKY_LOOKING_NEGATIVE_CONTROL
+
+stop_rules:
+  - do_not_add_shensha_nayin_or_new_school_variants_to_rescue_v1
+  - do_not_select_random_seed_from_historical_winner
+  - do_not_reinterpret_shifted_or_synthetic_null_success_as_traditional_evidence
+  - new_symbolic_formulation_requires_new_family_id_and_precommit
