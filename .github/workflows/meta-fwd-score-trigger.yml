@@ -51,7 +51,7 @@ jobs:
 
           run_cmd runtime_lock python -m metaalpha.forward_runtime_lock --repo-root .
           RC_RUNTIME=$?
-          run_cmd prediction_audit python -m metaalpha.forward_audit \
+          run_cmd settlement_audit python -m metaalpha.forward_settlement_audit \
             --predictions-dir forward/META_FWD_001/predictions \
             --repo-root .
           RC_AUDIT=$?
@@ -80,7 +80,7 @@ jobs:
           fi
 
           echo "===== summary =====" | tee -a "$LOG"
-          echo "runtime_lock=$RC_RUNTIME prediction_audit=$RC_AUDIT daily_refit_audit=$RC_REFIT ledger=$RC_LEDGER realized_audit=$RC_REALIZED" | tee -a "$LOG"
+          echo "runtime_lock=$RC_RUNTIME settlement_audit=$RC_AUDIT daily_refit_audit=$RC_REFIT ledger=$RC_LEDGER realized_audit=$RC_REALIZED" | tee -a "$LOG"
           echo "realized_files=$(find forward/META_FWD_001/realized -maxdepth 1 -name '*.json' 2>/dev/null | sort | tr '\n' ' ')" | tee -a "$LOG"
           if [ -f forward/META_FWD_001/status/latest_status.json ]; then
             cat forward/META_FWD_001/status/latest_status.json >> "$LOG"
