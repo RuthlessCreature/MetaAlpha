@@ -1,7 +1,7 @@
 {
-  "requested_at_shanghai": "2026-08-19T10:04:00+08:00",
-  "reason": "diagnostic explicit catch-up after scheduled settlement failed to lock 2026-08-17; pinned Sina data already contains 2026-08-18",
-  "scope": "settlement_only_with_persistent_diagnostics",
+  "requested_at_shanghai": "2026-08-19T10:08:00+08:00",
+  "reason": "rerun catch-up after introducing settlement-safe audit semantics for correctly declared late ineligible records",
+  "scope": "settlement_only_after_audit_fix",
   "predictor_changes": false,
   "gate_changes": false
 }
