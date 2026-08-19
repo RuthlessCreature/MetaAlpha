@@ -1,0 +1,139 @@
+generated_at=2026-08-19T02:05:30Z
+head=ca204bc3d207d18244eff5a7473ea5b96a1dc7dc
+shanghai_date=2026-08-19
+===== runtime_lock =====
+{
+  "family_id": "META_FWD_001",
+  "note": "Predictive source, dependency lock and runtime are frozen to the first eligible META_FWD_001 run; audit/settlement code is outside the frozen predictor closure.",
+  "runtime": {
+    "failures": {},
+    "installed_versions": {
+      "PyYAML": "6.0.3",
+      "akracer": "0.0.14",
+      "akshare": "1.18.84",
+      "beautifulsoup4": "4.15.0",
+      "certifi": "2026.7.22",
+      "cffi": "2.1.1",
+      "charset-normalizer": "3.5.1",
+      "curl_cffi": "0.16.0",
+      "decorator": "5.3.1",
+      "et-xmlfile": "2.0.0",
+      "html5lib": "1.1",
+      "idna": "3.18",
+      "joblib": "1.5.3",
+      "jsonpath": "0.82.2",
+      "lunar_python": "1.4.8",
+      "lxml": "6.1.1",
+      "narwhals": "2.24.0",
+      "numpy": "2.4.6",
+      "openpyxl": "3.1.5",
+      "packaging": "26.3",
+      "pandas": "3.0.5",
+      "patsy": "1.0.2",
+      "py-mini-racer": "0.6.0",
+      "pycparser": "3.0",
+      "python-dateutil": "2.9.0.post0",
+      "requests": "2.34.2",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.17.1",
+      "six": "1.17.0",
+      "soupsieve": "2.9.2",
+      "statsmodels": "0.14.6",
+      "tabulate": "0.10.0",
+      "threadpoolctl": "3.6.0",
+      "tqdm": "4.70.0",
+      "typing-extensions": "4.16.0",
+      "urllib3": "2.7.0",
+      "webencodings": "0.6.1",
+      "xlrd": "2.0.2"
+    },
+    "locked_package_count": 38,
+    "lockfile": "requirements/meta-fwd-001.lock.txt",
+    "lockfile_sha256_actual": "f12b6780df99f96a7904d435c42344f5b809852dbff043d568306e7721ee2a8b",
+    "lockfile_sha256_expected": "f12b6780df99f96a7904d435c42344f5b809852dbff043d568306e7721ee2a8b",
+    "python_actual": "3.11.15",
+    "python_expected": "3.11.15",
+    "status": "PASS"
+  },
+  "source": {
+    "current_sha256": {
+      "src/metaalpha/bazi_ziping.py": "b1f5e25b5b644a3967cd7e172024104167747deb3ff32973778fd3abd959e564",
+      "src/metaalpha/calendar_cycle.py": "2f316933ba9ad3a3283f2cc8b450108b5208cc66a05032377a754788faaacbea",
+      "src/metaalpha/calendar_features.py": "76f6110e9f90878eb8dd4434175f8c9557c4c24361f88cc44d7e91c2321db4e8",
+      "src/metaalpha/controls.py": "99b453ad6e6ff31e7cd6ebac1a7662e98253253ba2ebbfb0d4ee739731709282",
+      "src/metaalpha/data_sources.py": "1182345ffae1b4741867d2a47faba1cb09c40269c181075d73be0f4710f51276",
+      "src/metaalpha/forward_meta.py": "a66269a7cb49a4fe4c46ee585bb6a63968f8062c93eb56109105501ad2cd6938",
+      "src/metaalpha/ganzhi.py": "3877545381fd45171da906f9f07ff3404aa604323f753327ef3341dc3a15d128",
+      "src/metaalpha/hybrid_model.py": "97a90c7778c1501cb1de354bccfef42c47861ae4fb81fa768e77d643f4d1bc7f",
+      "src/metaalpha/labels.py": "7192611abf82123aed77e276e3477f4c478072cbb57e02b45ff0c4cbf97cc69e",
+      "src/metaalpha/liuyao_hash.py": "7725f9e56bbd84e9217836b8f25eb5c4baf8da578d27ff289cbbed72bb3c58d0",
+      "src/metaalpha/market_baseline.py": "a6af140c76214b023b73701a3ae8abf640168020eb9f7df06aa20edee82af383",
+      "src/metaalpha/meihua.py": "eeb1026642f79ac084a4ff96ab02c0748d65e877c438efb0746a60820fc549cd",
+      "src/metaalpha/meta_branch.py": "0706ac37c71baec8521fe91219837f43ff9d38003109abf25aad301031053ee9",
+      "src/metaalpha/natal_transit.py": "e72dd67730198ea4a18c509fc4e91fdc99db93d6578f680e06c427737d4951c3",
+      "src/metaalpha/pipeline.py": "118b8e564a167c5dd59ec895fecd0fa64e342d2f6f5d467d4d61e39d1f06a5ae",
+      "src/metaalpha/qimen_market.py": "3cfeec9f35d2a4ba0d7cf76c09c9b8c33ad0aead3172da8b6c81352b3fa91aa0",
+      "src/metaalpha/qimen_v1.py": "4cfbba563597f6db2899eed8db82db43ec3f3b6a8cc84a41dbeda13cf383270a",
+      "src/metaalpha/symbolic_state.py": "86665313afb682a6c4f1487542ba4fd617dc256e69808ae693c8e46c95425c30",
+      "src/metaalpha/validation.py": "8daee8783c0bf7b7ef765dfcff5b4c48d621b9d232d19eed7269d462a74d1ee2",
+      "src/metaalpha/zpzt_route_v3.py": "ee97abda2fa4c2b52bbe256032888cdfa998a01f84c42581def68b789dbe4e5c",
+      "src/metaalpha/zpzt_route_v4.py": "99056a8e3400c9f11a21c18a9dc5bcce63cb908e1bf0eac7a49d72d86edd0781",
+      "src/metaalpha/zpzt_state.py": "f8aeaf5cd376b7e7bc934f7d80ec35d5505df5f399296e5493de509894b626f0",
+      "src/metaalpha/zpzt_strength.py": "6e205c6b5ab6ab6afde43836a3e309ae9c5574b97e474b817340a672773c0c6c",
+      "src/metaalpha/zpzt_structure_v4.py": "f16d29c8f81078552dc2837a2f679beaf91d5fd58c0a95c105b6d5b1f69f4c9c",
+      "src/metaalpha/zpzt_use_v2.py": "be70267766ed5bae40c70b43d3fc0d270be6902b60e1cf1a4070ca7f2bf82669"
+    },
+    "failures": {},
+    "frozen_source_count": 25,
+    "reference_commit": "12ddbcc66b0f1b3679c3f87ab1598cd538fdaa47",
+    "status": "PASS"
+  },
+  "status": "PASS"
+}
+RC=0
+===== prediction_audit =====
+{
+  "failures": {
+    "2026-08-18.json": [
+      "git_history: first/only commit 2026-08-18T01:48:35+00:00 is not before anchor 2026-08-18T09:25:00+08:00"
+    ]
+  },
+  "family_id": "META_FWD_001",
+  "git_history_verified": true,
+  "independently_eligible_records": 2,
+  "note": "Git committer time is an audit signal, not an external trusted timestamp authority.",
+  "records": 3,
+  "schema_version": 1,
+  "status": "FAIL"
+}
+RC=1
+===== daily_refit_audit =====
+{
+  "failures": {},
+  "family_id": "META_FWD_001",
+  "grandfather": {
+    "generated_day": "2026-08-16",
+    "target": "2026-08-17"
+  },
+  "records": 3,
+  "rule": "After the first bootstrap, each prediction must be generated on its target Shanghai civil date so the frozen expanding-daily-refit policy cannot be bypassed by bulk early precommitment.",
+  "schema_version": 1,
+  "status": "PASS"
+}
+RC=0
+===== summary =====
+runtime_lock=0 prediction_audit=1 daily_refit_audit=0 ledger=99 realized_audit=99
+realized_files=
+{
+  "eligible_records": 1,
+  "family_id": "META_FWD_001",
+  "gate_locked": false,
+  "market_coverage": 0.0,
+  "market_sessions_in_scored_span": 0,
+  "outcome_source": "immutable_realization_ledger",
+  "realizations_created_now": [],
+  "schema_version": 2,
+  "sessions_until_gate": 500,
+  "settled_sessions": 0,
+  "status": "COLLECTING"
+}
