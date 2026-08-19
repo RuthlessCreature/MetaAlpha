@@ -1,1 +1,2 @@
 date,confirmatory_eligible,generated_at,baseline_prob,source_file,cycle_prob,ziping_prob,qimen_prob,meihua_prob,liuyao_hash_prob,same_session_return,same_session_direction,realization_file
+2026-08-17,True,2026-08-16T22:15:40.790505+08:00,0.5407529358869914,forward/META_FWD_001/predictions/2026-08-17.json,0.5510074182186891,0.5559765262899626,0.5232638963931996,0.5716063298593584,0.529318952488821,0.014126690527748176,1,forward/META_FWD_001/realized/2026-08-17.json
