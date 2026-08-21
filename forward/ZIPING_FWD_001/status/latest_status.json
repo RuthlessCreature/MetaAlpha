@@ -26,10 +26,10 @@
   },
   "hypothesis_id": "ZIPING_FWD_001",
   "hypothesis_version": 1,
-  "last_scored_date": "2026-08-18",
+  "last_scored_date": "2026-08-19",
   "max_shift_null_beta_bps": null,
-  "non_signal_mean_return": -0.011053958000814434,
-  "non_signal_sessions": 2,
+  "non_signal_mean_return": -0.006573380632683978,
+  "non_signal_sessions": 3,
   "provider": "sina",
   "raw_mean_difference": null,
   "raw_mean_difference_bps": null,
@@ -63,5 +63,5 @@
   "signal_sessions": 0,
   "status": "COLLECTING",
   "target": "ret_fwd_1",
-  "total_scored_sessions": 2
+  "total_scored_sessions": 3
 }
