@@ -5,9 +5,7 @@
   "market_coverage": 0.8,
   "market_sessions_in_scored_span": 5,
   "outcome_source": "immutable_realization_ledger",
-  "realizations_created_now": [
-    "2026-08-21.json"
-  ],
+  "realizations_created_now": [],
   "schema_version": 2,
   "sessions_until_gate": 496,
   "settled_sessions": 4,
