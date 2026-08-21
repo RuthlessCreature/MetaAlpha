@@ -1,0 +1,34 @@
+{
+  "active_after_registration": true,
+  "calendar_status": "candidate_session_unconfirmed",
+  "confirmatory_eligible": true,
+  "date": "2026-08-21",
+  "feature": "zpzt__v1__month_primary_ten_god",
+  "feature_value": "正财",
+  "forecast": "no_call",
+  "forward_start": "2026-08-17",
+  "generated_at": "2026-08-21T09:05:38.783590+08:00",
+  "hypothesis_id": "ZIPING_FWD_001",
+  "hypothesis_version": 1,
+  "method": "Ziping Zhenquan month-command-first operationalization",
+  "pillars": {
+    "day": "丁卯",
+    "month": "丙申",
+    "time": "乙巳",
+    "year": "丙午"
+  },
+  "precommitted_before_anchor": true,
+  "provider_for_scoring": "sina",
+  "registered_level": "偏财",
+  "rule_hash_material": {
+    "anchor": "09:25 Asia/Shanghai",
+    "feature": "zpzt__v1__month_primary_ten_god",
+    "level": "偏财",
+    "start": "2026-08-17",
+    "target": "ret_fwd_1"
+  },
+  "schema_version": 1,
+  "session_anchor": "2026-08-21T09:25:00+08:00",
+  "signal": 0,
+  "target": "ret_fwd_1"
+}
