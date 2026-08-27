@@ -2,11 +2,17 @@ name: ZIPING_FWD_001 Forward Test
 
 on:
   schedule:
-    # 08:00 Asia/Shanghai, Monday-Friday. A delayed run after 09:25 is
-    # automatically marked ineligible by the signal record itself.
-    - cron: '0 0 * * 1-5'
-    # 16:30 Asia/Shanghai, Monday-Friday, after the A-share close.
-    - cron: '30 8 * * 1-5'
+    # Redundant same-day pre-anchor attempts in Asia/Shanghai. GitHub Actions
+    # scheduled runs have shown multi-hour delays, so one 08:00 cron is not
+    # reliable enough for a 09:25 immutable anchor. All attempts are idempotent.
+    # 00:17 / 02:47 / 05:17 Asia/Shanghai, Monday-Friday.
+    - cron: '17 16 * * 0-4'
+    - cron: '47 18 * * 0-4'
+    - cron: '17 21 * * 0-4'
+    # 18:37 Asia/Shanghai, Monday-Friday, after the close with provider buffer.
+    - cron: '37 10 * * 1-5'
+    # 07:27 Asia/Shanghai, Tuesday-Saturday, catch-up score for provider latency.
+    - cron: '27 23 * * 1-5'
   workflow_dispatch:
     inputs:
       mode:
@@ -32,7 +38,9 @@ concurrency:
 jobs:
   signal:
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '0 0 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '17 16 * * 0-4') ||
+      (github.event_name == 'schedule' && github.event.schedule == '47 18 * * 0-4') ||
+      (github.event_name == 'schedule' && github.event.schedule == '17 21 * * 0-4') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'signal')
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +63,7 @@ jobs:
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
           OUT="forward/ZIPING_FWD_001/signals/${DATE}.json"
           if [ -e "$OUT" ]; then
-            echo "Signal already exists; refusing to overwrite and treating rerun as idempotent."
+            echo "Signal already exists; refusing to overwrite and treating redundant run as idempotent."
             exit 0
           fi
           python -m metaalpha.forward_ziping signal --date "$DATE" --out "$OUT"
@@ -74,7 +82,8 @@ jobs:
 
   score:
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '30 8 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '37 10 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '27 23 * * 1-5') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'score')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -90,7 +99,7 @@ jobs:
       - name: Score realized forward evidence on pinned Sina data
         run: |
           END=$(TZ=Asia/Shanghai date +%Y%m%d)
-          python -m metaalpha.forward_ziping score \
+          python -m metaalpha.forward_ziping_safe_score \
             --signals-dir forward/ZIPING_FWD_001/signals \
             --out-dir forward/ZIPING_FWD_001/status \
             --provider sina \
