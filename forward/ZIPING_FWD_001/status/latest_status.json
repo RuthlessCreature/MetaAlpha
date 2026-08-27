@@ -1,10 +1,10 @@
 {
   "calendar_adjusted_hac": {
-    "coefficient": -0.0007693288065583925,
-    "coefficient_bps": -7.693288065583925,
-    "p_one_sided_positive": 1.0,
-    "p_two_sided": 0.0,
-    "t_stat": -355.5038519892183
+    "coefficient": null,
+    "coefficient_bps": null,
+    "p_one_sided_positive": null,
+    "p_two_sided": null,
+    "t_stat": null
   },
   "checks": {
     "beats_shift_nulls": false,
@@ -33,6 +33,7 @@
   "provider": "sina",
   "raw_mean_difference": 0.003347994666984951,
   "raw_mean_difference_bps": 33.47994666984951,
+  "reason": "inferential HAC statistics suppressed until the frozen total/signal sample gate is reached",
   "rule": "zpzt__v1__month_primary_ten_god == 偏财 predicts positive ret_fwd_1",
   "schema_version": 1,
   "second_half_raw_difference_bps": -2.5702908532839372,
