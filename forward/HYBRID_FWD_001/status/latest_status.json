@@ -3,9 +3,9 @@
   "family_id": "HYBRID_FWD_001",
   "gate_locked": false,
   "market_coverage": 1.0,
-  "market_sessions_in_scored_span": 7,
+  "market_sessions_in_scored_span": 8,
   "schema_version": 1,
-  "sessions_until_gate": 493,
-  "settled_sessions": 7,
+  "sessions_until_gate": 492,
+  "settled_sessions": 8,
   "status": "COLLECTING"
 }
