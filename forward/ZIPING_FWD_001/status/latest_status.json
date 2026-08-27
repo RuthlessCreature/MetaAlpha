@@ -8,14 +8,14 @@
   },
   "checks": {
     "beats_shift_nulls": false,
-    "first_half_positive": false,
+    "first_half_positive": true,
     "minimum_effect_met": false,
     "one_sided_alpha_met": false,
     "positive_calendar_adjusted_effect": false,
     "sample_ready": false,
     "second_half_positive": false
   },
-  "first_half_raw_difference_bps": null,
+  "first_half_raw_difference_bps": 69.53018419298296,
   "first_scored_date": "2026-08-17",
   "gate": {
     "hac_maxlags": 5,
@@ -26,17 +26,17 @@
   },
   "hypothesis_id": "ZIPING_FWD_001",
   "hypothesis_version": 1,
-  "last_scored_date": "2026-08-25",
+  "last_scored_date": "2026-08-26",
   "max_shift_null_beta_bps": null,
-  "non_signal_mean_return": -0.0029683568803706337,
-  "non_signal_sessions": 6,
+  "non_signal_mean_return": -0.0009360273101781351,
+  "non_signal_sessions": 7,
   "provider": "sina",
-  "raw_mean_difference": 0.003347994666984951,
-  "raw_mean_difference_bps": 33.47994666984951,
+  "raw_mean_difference": 0.0013156650967924527,
+  "raw_mean_difference_bps": 13.156650967924527,
   "reason": "inferential HAC statistics suppressed until the frozen total/signal sample gate is reached",
   "rule": "zpzt__v1__month_primary_ten_god == 偏财 predicts positive ret_fwd_1",
   "schema_version": 1,
-  "second_half_raw_difference_bps": -2.5702908532839372,
+  "second_half_raw_difference_bps": null,
   "shift_null_hac": {
     "17": {
       "coefficient": null,
@@ -64,5 +64,5 @@
   "signal_sessions": 1,
   "status": "COLLECTING",
   "target": "ret_fwd_1",
-  "total_scored_sessions": 7
+  "total_scored_sessions": 8
 }
