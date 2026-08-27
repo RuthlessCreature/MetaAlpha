@@ -13,6 +13,7 @@ from .data_sources import DataManifest, fetch_akshare_index
 
 
 _ORIGINAL_HAC = core._fit_calendar_adjusted_hac
+_ORIGINAL_SCORE = core.score_forward_experiment
 
 
 def _nan_hac() -> dict[str, float]:
@@ -64,18 +65,34 @@ def _guarded_hac(
         return _nan_hac()
 
 
+def _suppress_inference_until_gate(result: dict[str, object]) -> dict[str, object]:
+    checks = result.get("checks")
+    if not isinstance(checks, dict) or bool(checks.get("sample_ready")):
+        return result
+
+    result = dict(result)
+    result["calendar_adjusted_hac"] = _nan_hac()
+    result["shift_null_hac"] = {str(shift): _nan_hac() for shift in core.SHIFT_NULLS}
+    result["max_shift_null_beta_bps"] = float("nan")
+    result["reason"] = (
+        "inferential HAC statistics suppressed until the frozen total/signal sample gate is reached"
+    )
+    return result
+
+
 def score_forward_experiment(
     market: pd.DataFrame,
     signals: pd.DataFrame,
     *,
     gate: core.ForwardGate = core.ForwardGate(),
 ) -> dict[str, object]:
-    original = core._fit_calendar_adjusted_hac
+    original_hac = core._fit_calendar_adjusted_hac
     core._fit_calendar_adjusted_hac = _guarded_hac
     try:
-        return core.score_forward_experiment(market, signals, gate=gate)
+        result = _ORIGINAL_SCORE(market, signals, gate=gate)
     finally:
-        core._fit_calendar_adjusted_hac = original
+        core._fit_calendar_adjusted_hac = original_hac
+    return _suppress_inference_until_gate(result)
 
 
 def write_score_outputs(
@@ -85,12 +102,15 @@ def write_score_outputs(
     *,
     manifest: DataManifest | None = None,
 ) -> dict[str, object]:
-    original = core._fit_calendar_adjusted_hac
+    original_hac = core._fit_calendar_adjusted_hac
+    original_score = core.score_forward_experiment
     core._fit_calendar_adjusted_hac = _guarded_hac
+    core.score_forward_experiment = score_forward_experiment
     try:
         return core.write_score_outputs(market, signals_dir, out_dir, manifest=manifest)
     finally:
-        core._fit_calendar_adjusted_hac = original
+        core._fit_calendar_adjusted_hac = original_hac
+        core.score_forward_experiment = original_score
 
 
 def main() -> None:
