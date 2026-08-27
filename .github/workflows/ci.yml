@@ -24,9 +24,12 @@ jobs:
         run: python -m metaalpha.forward_runtime_lock --repo-root .
       - name: Test
         run: pytest -q
-      - name: Audit META_FWD_001 immutable prediction ledger
+      - name: Audit META_FWD_001 immutable prediction ledger for repository health
         run: |
-          python -m metaalpha.forward_audit \
+          # Repository CI must tolerate historical post-anchor records only when
+          # their stored eligibility is independently confirmed false. Strict
+          # pre-anchor audit remains in the prediction-generation workflow.
+          python -m metaalpha.forward_settlement_audit \
             --predictions-dir forward/META_FWD_001/predictions \
             --repo-root .
           python -m metaalpha.forward_daily_refit_audit \
