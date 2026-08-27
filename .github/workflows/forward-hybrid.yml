@@ -2,11 +2,17 @@ name: HYBRID_FWD_001 Future Test
 
 on:
   schedule:
-    # 08:00 Asia/Shanghai, Monday-Friday. If GitHub delays the run beyond
-    # 09:25, the generated record remains in the audit trail but is ineligible.
-    - cron: '0 0 * * 1-5'
-    # 16:30 Asia/Shanghai, Monday-Friday, after the A-share close.
-    - cron: '30 8 * * 1-5'
+    # Redundant same-day pre-anchor attempts in Asia/Shanghai. Each write is
+    # immutable/idempotent, so delayed duplicate runs only observe an existing
+    # prediction and exit without changing it.
+    # 00:17 / 02:47 / 05:17 Asia/Shanghai, Monday-Friday.
+    - cron: '17 16 * * 0-4'
+    - cron: '47 18 * * 0-4'
+    - cron: '17 21 * * 0-4'
+    # 18:37 Asia/Shanghai, Monday-Friday, after the close with provider buffer.
+    - cron: '37 10 * * 1-5'
+    # 07:27 Asia/Shanghai, Tuesday-Saturday, catch-up settlement.
+    - cron: '27 23 * * 1-5'
   workflow_dispatch:
     inputs:
       mode:
@@ -32,7 +38,9 @@ concurrency:
 jobs:
   prediction:
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '0 0 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '17 16 * * 0-4') ||
+      (github.event_name == 'schedule' && github.event.schedule == '47 18 * * 0-4') ||
+      (github.event_name == 'schedule' && github.event.schedule == '17 21 * * 0-4') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'prediction')
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -56,7 +64,7 @@ jobs:
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
           OUT="forward/HYBRID_FWD_001/predictions/${DATE}.json"
           if [ -e "$OUT" ]; then
-            echo "Prediction already exists; refusing overwrite and treating rerun as idempotent."
+            echo "Prediction already exists; refusing overwrite and treating redundant run as idempotent."
             exit 0
           fi
           python -m metaalpha.forward_hybrid signal --date "$DATE" --out "$OUT"
@@ -75,7 +83,8 @@ jobs:
 
   score:
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '30 8 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '37 10 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '27 23 * * 1-5') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'score')
     runs-on: ubuntu-latest
     timeout-minutes: 15
