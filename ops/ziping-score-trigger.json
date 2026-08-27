@@ -1,6 +1,6 @@
 {
-  "requested_at_shanghai": "2026-08-27T17:10:00+08:00",
-  "reason": "verify tiny-sample HAC guard after repeated scheduled score failures",
+  "requested_at_shanghai": "2026-08-27T17:14:00+08:00",
+  "reason": "verify score succeeds and immature HAC inference is suppressed",
   "scope": "score_only",
   "predictor_changes": false,
   "gate_changes": false
