@@ -1,0 +1,112 @@
+{
+  "active_after_registration": true,
+  "branch_states": {
+    "cycle": {
+      "cycle__v1__day_pillar": "己卯",
+      "cycle__v1__jieqi_phase_quartile": 2,
+      "cycle__v1__month_branch": "申",
+      "cycle__v1__month_stem": "丙",
+      "cycle__v1__prev_jieqi": "处暑"
+    },
+    "liuyao_hash": {
+      "liuyao_hash__v1__base_pattern": "100100",
+      "liuyao_hash__v1__changed_pattern": "111100",
+      "liuyao_hash__v1__moving_count": 2,
+      "liuyao_hash__v1__moving_lines_key": "2-3"
+    },
+    "meihua": {
+      "meihua__v1__base_hexagram_key": "离/乾",
+      "meihua__v1__body_use_relation": "用克体",
+      "meihua__v1__changed_hexagram_key": "乾/乾",
+      "meihua__v1__moving_line": 5,
+      "meihua__v1__mutual_hexagram_key": "兑/乾"
+    },
+    "qimen": {
+      "qimen__v1__dun_ju_yuan": "阴1|上元",
+      "qimen__v1__duty_landings": "star=9|door=2",
+      "qimen__v1__duty_star_door": "天蓬|休门",
+      "qimen__v1__rotation_state": "star=4|door=5|反吟",
+      "qimen__v1__void_relation_state": "day_star=0|day_door=1|hour_star=0|hour_door=0",
+      "qimen__v1__yima_relation_state": "palace=6|star=0|door=0"
+    },
+    "ziping": {
+      "zpzt_route__v3__route_state": "route_unresolved",
+      "zpzt_structure__v4__selected_use_root_bin": "2plus",
+      "zpzt_structure__v4__support_profile": "monthstem_support|dmroot_1|visible_support_gt_drain",
+      "zpzt_structure__v4__wealth_resource_position_resolution": "not_applicable",
+      "zpzt_use__v2__selected_ten_god": "伤官",
+      "zpzt_use__v2__selection_mode": "primary_untransmitted_default"
+    }
+  },
+  "calendar_status": "candidate_session_unconfirmed",
+  "candidate_branches": [
+    "cycle",
+    "ziping",
+    "qimen",
+    "meihua"
+  ],
+  "code_commit": "5b60fe0aac9e32f5b71d108ead7a8db57fe55913",
+  "confirmatory_eligible": true,
+  "date": "2026-09-02",
+  "family_id": "META_FWD_001",
+  "forecast_labels": {
+    "baseline": "up",
+    "cycle": "up",
+    "liuyao_hash": "up",
+    "meihua": "up",
+    "qimen": "up",
+    "ziping": "up"
+  },
+  "forward_start": "2026-08-17",
+  "generated_at": "2026-09-02T03:24:45.662543+08:00",
+  "market_manifest": {
+    "canonical_sha256": "def43cb0966de9842356864518443d4a00757fe02005e9d9333dd1e857b79200",
+    "fetched_at_utc": "2026-09-01T19:24:46.940126+00:00",
+    "first_date": "1990-12-19",
+    "last_date": "2026-09-01",
+    "requested_end": "20260901",
+    "requested_start": "19901219",
+    "rows": 8716,
+    "source": "AKShare / Sina index history",
+    "source_method": "ak.stock_zh_index_daily",
+    "source_version": "1.18.84",
+    "symbol": "000001"
+  },
+  "negative_controls": [
+    "liuyao_hash"
+  ],
+  "precommitted_before_anchor": true,
+  "predictions": {
+    "baseline": {
+      "best_C": 0.01,
+      "prob_up": 0.5259815366352372
+    },
+    "cycle": {
+      "best_C": 0.01,
+      "prob_up": 0.5696192819191048
+    },
+    "liuyao_hash": {
+      "best_C": 0.01,
+      "prob_up": 0.5096847704650691
+    },
+    "meihua": {
+      "best_C": 0.01,
+      "prob_up": 0.5194920396843785
+    },
+    "qimen": {
+      "best_C": 0.01,
+      "prob_up": 0.5357981901493062
+    },
+    "ziping": {
+      "best_C": 0.01,
+      "prob_up": 0.5475602678805651
+    }
+  },
+  "provider": "sina",
+  "schema_version": 1,
+  "session_anchor": "2026-09-02T09:25:00+08:00",
+  "symbol": "000001",
+  "training_last_market_date": "2026-09-01",
+  "training_rows": 8695,
+  "version": 1
+}
