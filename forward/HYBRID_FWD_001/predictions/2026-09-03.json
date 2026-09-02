@@ -1,0 +1,111 @@
+{
+  "active_after_registration": true,
+  "calendar_status": "candidate_session_unconfirmed",
+  "code_commit": "0b6de6cf137a43e32dae0e3f0047a5ce787ac903",
+  "confirmatory_eligible": true,
+  "date": "2026-09-03",
+  "family_id": "HYBRID_FWD_001",
+  "forecast_labels": {
+    "baseline": "down",
+    "cycle": "up",
+    "ziping": "down"
+  },
+  "forward_start": "2026-08-17",
+  "generated_at": "2026-09-03T03:23:17.137937+08:00",
+  "market_manifest": {
+    "canonical_sha256": "5f872ed2825f27310475bf662042272d620aee8a3aa07aae114d9410a94e0598",
+    "fetched_at_utc": "2026-09-02T19:23:19.079736+00:00",
+    "first_date": "1990-12-19",
+    "last_date": "2026-09-02",
+    "requested_end": "20260902",
+    "requested_start": "19901219",
+    "rows": 8717,
+    "source": "AKShare / Sina index history",
+    "source_method": "ak.stock_zh_index_daily",
+    "source_version": "1.18.84",
+    "symbol": "000001"
+  },
+  "precommitted_before_anchor": true,
+  "predictions": {
+    "baseline": {
+      "best_C": 0.01,
+      "prob_up": 0.488145536560517
+    },
+    "cycle": {
+      "best_C": 0.01,
+      "prob_up": 0.5102220287685559
+    },
+    "ziping": {
+      "best_C": 0.01,
+      "prob_up": 0.4752986750542856
+    }
+  },
+  "provider": "sina",
+  "rule_hash_material": {
+    "cycle_features": [
+      "cycle__v1__prev_jieqi",
+      "cycle__v1__jieqi_phase_quartile",
+      "cycle__v1__day_pillar",
+      "cycle__v1__month_stem",
+      "cycle__v1__month_branch"
+    ],
+    "market_baseline": [
+      "ret_lag_1",
+      "ret_lag_2",
+      "ret_lag_5",
+      "ret_lag_10",
+      "ret_lag_20",
+      "abs_ret_lag_1",
+      "vol_lag_5",
+      "vol_lag_20",
+      "overnight_gap_lag_1",
+      "intraday_range_lag_1",
+      "close_ma5_distance_lag_1",
+      "close_ma20_distance_lag_1",
+      "drawdown_20_lag_1",
+      "volume_log_change_lag_1",
+      "volume_z20_lag_1",
+      "normalized_time",
+      "normalized_time_squared",
+      "weekday",
+      "gregorian_month"
+    ],
+    "model": "ridge logistic; C grid 0.01,0.1,1,10; frozen expanding inner CV",
+    "selection_source": "HYBRID_ALPHA_001",
+    "winners": [
+      "cycle",
+      "ziping"
+    ],
+    "ziping_features": [
+      "zpzt_use__v2__selected_ten_god",
+      "zpzt_use__v2__selection_mode",
+      "zpzt_route__v3__route_state",
+      "zpzt_structure__v4__wealth_resource_position_resolution",
+      "zpzt_structure__v4__selected_use_root_bin",
+      "zpzt_structure__v4__support_profile"
+    ]
+  },
+  "schema_version": 1,
+  "session_anchor": "2026-09-03T09:25:00+08:00",
+  "symbol": "000001",
+  "symbolic_states": {
+    "cycle": {
+      "cycle__v1__day_pillar": "庚辰",
+      "cycle__v1__jieqi_phase_quartile": 2,
+      "cycle__v1__month_branch": "申",
+      "cycle__v1__month_stem": "丙",
+      "cycle__v1__prev_jieqi": "处暑"
+    },
+    "ziping": {
+      "zpzt_route__v3__route_state": "no_registered_route_hit",
+      "zpzt_structure__v4__selected_use_root_bin": "2plus",
+      "zpzt_structure__v4__support_profile": "monthstem_nonsupport|dmroot_2plus|visible_drain_gt_support",
+      "zpzt_structure__v4__wealth_resource_position_resolution": "not_applicable",
+      "zpzt_use__v2__selected_ten_god": "比肩",
+      "zpzt_use__v2__selection_mode": "primary_untransmitted_default"
+    }
+  },
+  "training_last_market_date": "2026-09-02",
+  "training_rows": 8696,
+  "version": 1
+}
