@@ -2,12 +2,14 @@
   "eligible_records": 12,
   "family_id": "META_FWD_001",
   "gate_locked": false,
-  "market_coverage": 0.8461538461538461,
-  "market_sessions_in_scored_span": 13,
+  "market_coverage": 0.8571428571428571,
+  "market_sessions_in_scored_span": 14,
   "outcome_source": "immutable_realization_ledger",
-  "realizations_created_now": [],
+  "realizations_created_now": [
+    "2026-09-03.json"
+  ],
   "schema_version": 2,
-  "sessions_until_gate": 489,
-  "settled_sessions": 11,
+  "sessions_until_gate": 488,
+  "settled_sessions": 12,
   "status": "COLLECTING"
 }
