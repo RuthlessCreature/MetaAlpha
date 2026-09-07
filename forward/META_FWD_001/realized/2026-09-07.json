@@ -1,0 +1,29 @@
+{
+  "close": 3932.699,
+  "date": "2026-09-07",
+  "family_id": "META_FWD_001",
+  "market_manifest": {
+    "canonical_sha256": "382722072f39ede733f34e74d9131a2e687d09c8301e298b9f584d3f4b4143a4",
+    "fetched_at_utc": "2026-09-07T16:02:37.302795+00:00",
+    "first_date": "2026-08-03",
+    "last_date": "2026-09-07",
+    "requested_end": "20260908",
+    "requested_start": "20260801",
+    "rows": 26,
+    "source": "AKShare / Sina index history",
+    "source_method": "ak.stock_zh_index_daily",
+    "source_version": "1.18.84",
+    "symbol": "000001"
+  },
+  "prediction_file": "forward/META_FWD_001/predictions/2026-09-07.json",
+  "prediction_sha256": "c20b68288d6c939066a7a191b0f4ecac8468c5e93f2481f223f2aeaa0e6aa5f9",
+  "previous_close": 3930.116,
+  "previous_market_date": "2026-09-04",
+  "provider": "sina",
+  "realized_direction": 1,
+  "realized_return": 0.0006572325091676046,
+  "schema_version": 1,
+  "settled_at": "2026-09-08T00:02:37.311834+08:00",
+  "symbol": "000001",
+  "target": "same_session_close_to_close_direction"
+}
