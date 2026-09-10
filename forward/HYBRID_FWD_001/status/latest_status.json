@@ -2,10 +2,10 @@
   "eligible_records": 18,
   "family_id": "HYBRID_FWD_001",
   "gate_locked": false,
-  "market_coverage": 0.9444444444444444,
-  "market_sessions_in_scored_span": 18,
+  "market_coverage": 0.9473684210526315,
+  "market_sessions_in_scored_span": 19,
   "schema_version": 1,
-  "sessions_until_gate": 483,
-  "settled_sessions": 17,
+  "sessions_until_gate": 482,
+  "settled_sessions": 18,
   "status": "COLLECTING"
 }
