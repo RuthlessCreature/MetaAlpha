@@ -1,9 +1,9 @@
 {
   "canonical_sha256": "3387ca73908ae98756a5442a76e3e1ee035ff45c26cba53a7bd91e7426864edb",
-  "fetched_at_utc": "2026-10-16T14:59:31.424056+00:00",
+  "fetched_at_utc": "2026-10-17T01:23:49.772475+00:00",
   "first_date": "2026-08-17",
   "last_date": "2026-10-16",
-  "requested_end": "20261016",
+  "requested_end": "20261017",
   "requested_start": "20260817",
   "rows": 39,
   "source": "AKShare / Sina index history",
