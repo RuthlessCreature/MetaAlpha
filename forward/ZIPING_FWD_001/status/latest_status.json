@@ -11,7 +11,7 @@
     "first_half_positive": false,
     "minimum_effect_met": false,
     "one_sided_alpha_met": false,
-    "positive_calendar_adjusted_effect": false,
+    "positive_calendar_adjusted_effect": true,
     "sample_ready": false,
     "second_half_positive": true
   },
@@ -26,17 +26,17 @@
   },
   "hypothesis_id": "ZIPING_FWD_001",
   "hypothesis_version": 1,
-  "last_scored_date": "2026-10-28",
+  "last_scored_date": "2026-10-29",
   "max_shift_null_beta_bps": null,
-  "non_signal_mean_return": -0.0017629518605312884,
-  "non_signal_sessions": 42,
+  "non_signal_mean_return": -0.0020557944242645043,
+  "non_signal_sessions": 43,
   "provider": "sina",
-  "raw_mean_difference": -0.0007817945982522927,
-  "raw_mean_difference_bps": -7.817945982522927,
+  "raw_mean_difference": -0.0004889520345190768,
+  "raw_mean_difference_bps": -4.889520345190768,
   "reason": "inferential HAC statistics suppressed until the frozen total/signal sample gate is reached",
   "rule": "zpzt__v1__month_primary_ten_god == 偏财 predicts positive ret_fwd_1",
   "schema_version": 1,
-  "second_half_raw_difference_bps": 39.02545238494312,
+  "second_half_raw_difference_bps": 44.05110104004184,
   "shift_null_hac": {
     "17": {
       "coefficient": null,
@@ -64,5 +64,5 @@
   "signal_sessions": 4,
   "status": "COLLECTING",
   "target": "ret_fwd_1",
-  "total_scored_sessions": 46
+  "total_scored_sessions": 47
 }
