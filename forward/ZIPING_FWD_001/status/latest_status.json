@@ -7,7 +7,7 @@
     "t_stat": null
   },
   "checks": {
-    "beats_shift_nulls": false,
+    "beats_shift_nulls": true,
     "first_half_positive": false,
     "minimum_effect_met": false,
     "one_sided_alpha_met": false,
@@ -15,7 +15,7 @@
     "sample_ready": false,
     "second_half_positive": true
   },
-  "first_half_raw_difference_bps": -59.33082850455549,
+  "first_half_raw_difference_bps": -57.585384939815256,
   "first_scored_date": "2026-08-17",
   "gate": {
     "hac_maxlags": 5,
@@ -26,17 +26,17 @@
   },
   "hypothesis_id": "ZIPING_FWD_001",
   "hypothesis_version": 1,
-  "last_scored_date": "2026-11-04",
+  "last_scored_date": "2026-11-05",
   "max_shift_null_beta_bps": null,
-  "non_signal_mean_return": -0.0013432743806540716,
-  "non_signal_sessions": 47,
+  "non_signal_mean_return": -0.0015452747195895632,
+  "non_signal_sessions": 48,
   "provider": "sina",
-  "raw_mean_difference": -0.0012014720781295095,
-  "raw_mean_difference_bps": -12.014720781295095,
+  "raw_mean_difference": -0.0009994717391940179,
+  "raw_mean_difference_bps": -9.99471739194018,
   "reason": "inferential HAC statistics suppressed until the frozen total/signal sample gate is reached",
   "rule": "zpzt__v1__month_primary_ten_god == 偏财 predicts positive ret_fwd_1",
   "schema_version": 1,
-  "second_half_raw_difference_bps": 34.64177271909424,
+  "second_half_raw_difference_bps": 37.595950155934894,
   "shift_null_hac": {
     "17": {
       "coefficient": null,
@@ -64,5 +64,5 @@
   "signal_sessions": 4,
   "status": "COLLECTING",
   "target": "ret_fwd_1",
-  "total_scored_sessions": 51
+  "total_scored_sessions": 52
 }
