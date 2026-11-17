@@ -1,11 +1,45 @@
 {
-  "eligible_records": 19,
+  "descriptive_models": {
+    "cycle": {
+      "accuracy_delta": 0.01666666666666672,
+      "auc_delta": 0.0033370411568408587,
+      "bootstrap_brier_ci025": -0.003828806170595422,
+      "bootstrap_brier_ci975": 0.003016216284128399,
+      "bootstrap_brier_p_one_sided": 0.645,
+      "bootstrap_brier_probability_positive": 0.355,
+      "bootstrap_logloss_ci025": -0.007748231866355273,
+      "bootstrap_logloss_ci975": 0.005985901029890441,
+      "bootstrap_logloss_p_one_sided": 0.6255,
+      "bootstrap_logloss_probability_positive": 0.3745,
+      "brier_improvement": 0.0005368499048253872,
+      "logloss_improvement": 0.0011051085316563514,
+      "windows_brier_improved": 1,
+      "windows_logloss_improved": 1
+    },
+    "ziping": {
+      "accuracy_delta": 0.01666666666666672,
+      "auc_delta": 0.03893214682981083,
+      "bootstrap_brier_ci025": -0.0013986242411951847,
+      "bootstrap_brier_ci975": 0.008056163546527644,
+      "bootstrap_brier_p_one_sided": 0.10799999999999998,
+      "bootstrap_brier_probability_positive": 0.892,
+      "bootstrap_logloss_ci025": -0.0030488027458546022,
+      "bootstrap_logloss_ci975": 0.015838805495495552,
+      "bootstrap_logloss_p_one_sided": 0.10650000000000004,
+      "bootstrap_logloss_probability_positive": 0.8935,
+      "brier_improvement": 0.0013855885963142411,
+      "logloss_improvement": 0.0027404263509127613,
+      "windows_brier_improved": 3,
+      "windows_logloss_improved": 3
+    }
+  },
+  "eligible_records": 66,
   "family_id": "HYBRID_FWD_001",
   "gate_locked": false,
-  "market_coverage": 0.95,
-  "market_sessions_in_scored_span": 20,
+  "market_coverage": 0.9836065573770492,
+  "market_sessions_in_scored_span": 61,
   "schema_version": 1,
-  "sessions_until_gate": 481,
-  "settled_sessions": 19,
+  "sessions_until_gate": 440,
+  "settled_sessions": 60,
   "status": "COLLECTING"
 }
