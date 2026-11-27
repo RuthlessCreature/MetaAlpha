@@ -86,15 +86,13 @@
       "windows_logloss_improved": 3
     }
   },
-  "eligible_records": 71,
+  "eligible_records": 72,
   "family_id": "META_FWD_001",
   "gate_locked": false,
   "market_coverage": 0.9558823529411765,
   "market_sessions_in_scored_span": 68,
   "outcome_source": "immutable_realization_ledger",
-  "realizations_created_now": [
-    "2026-11-26.json"
-  ],
+  "realizations_created_now": [],
   "schema_version": 2,
   "sessions_until_gate": 435,
   "settled_sessions": 65,
