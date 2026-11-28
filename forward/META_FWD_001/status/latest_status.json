@@ -92,9 +92,7 @@
   "market_coverage": 0.9565217391304348,
   "market_sessions_in_scored_span": 69,
   "outcome_source": "immutable_realization_ledger",
-  "realizations_created_now": [
-    "2026-11-27.json"
-  ],
+  "realizations_created_now": [],
   "schema_version": 2,
   "sessions_until_gate": 434,
   "settled_sessions": 66,
